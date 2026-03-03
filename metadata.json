@@ -1,0 +1,5 @@
+{
+  "name": "StockMaster Pro",
+  "description": "A professional inventory management system powered by Supabase and React.",
+  "requestFramePermissions": []
+}

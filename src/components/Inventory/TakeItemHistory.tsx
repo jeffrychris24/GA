@@ -1,0 +1,377 @@
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../hooks/useAuth';
+import { Loader2, History, Package, User as UserIcon, Calendar, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Search, Filter, XCircle } from 'lucide-react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+interface TakeItemHistoryEntry {
+  id: string;
+  item_id: string;
+  jumlah: number;
+  user_id: string;
+  user_name: string;
+  alasan: string;
+  created_at: string;
+  items: { // Joined item details
+    kode_barang: string;
+    nama_barang: string;
+    lokasi: string;
+  };
+  profiles: { // Joined user details
+    full_name: string;
+  };
+}
+
+export default function TakeItemHistory() {
+  const { profile } = useAuth();
+  const [history, setHistory] = useState<TakeItemHistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
+  const [sortColumn, setSortColumn] = useState<'created_at' | 'nama_barang' | 'jumlah' | null>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Search and Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Modal state for viewing detailed history
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedHistoryEntryForDetail, setSelectedHistoryEntryForDetail] = useState<TakeItemHistoryEntry | null>(null);
+
+  const fetchHistory = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const from = (page - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+
+      let query = supabase
+        .from('take_item_history')
+        .select(`*, items${searchTerm ? '!inner' : ''}(kode_barang, nama_barang, lokasi), profiles(full_name)`, { count: 'exact' });
+
+      if (searchTerm) {
+        query = query.or(`nama_barang.ilike.%${searchTerm}%,kode_barang.ilike.%${searchTerm}%,lokasi.ilike.%${searchTerm}%`, { foreignTable: 'items' });
+      }
+
+      if (startDate) {
+        query = query.gte('created_at', `${startDate}T00:00:00`);
+      }
+
+      if (endDate) {
+        query = query.lte('created_at', `${endDate}T23:59:59`);
+      }
+
+      if (sortColumn) {
+        const column = sortColumn === 'nama_barang' ? 'items.nama_barang' : sortColumn;
+        query = query.order(column, { ascending: sortDirection === 'asc' });
+      }
+
+      const { data, error, count } = await query.range(from, to);
+
+      if (error) throw error;
+
+      setHistory(data as TakeItemHistoryEntry[]);
+      setTotalCount(count || 0);
+    } catch (err: any) {
+      console.error('Error fetching take item history:', err);
+      setError(err.message || 'Failed to fetch history');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [page, itemsPerPage, sortColumn, sortDirection, searchTerm, startDate, endDate]);
+
+  const handleSort = (column: 'created_at' | 'nama_barang' | 'jumlah') => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const handleOpenDetailModal = (entry: TakeItemHistoryEntry) => {
+    setSelectedHistoryEntryForDetail(entry);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  };
+
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+  return (
+    <div className="p-6 bg-white rounded-xl shadow-sm">
+      <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center space-x-2">
+        <History size={24} className="text-blue-600" />
+        <span>Take Item History</span>
+      </h2>
+
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-400 text-red-700 p-4 mb-4" role="alert">
+          <p className="font-bold">Error</p>
+          <p>{error}</p>
+        </div>
+      )}
+
+      {/* Advanced Search & Filters */}
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="relative flex-grow">
+            <input
+              type="text"
+              placeholder="Cari berdasarkan nama, kode barang, atau lokasi..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <div className="flex items-center space-x-2">
+              <Calendar size={18} className="text-gray-400" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <span className="text-gray-400">-</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <button
+              onClick={handleClearSearch}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors whitespace-nowrap"
+            >
+              <XCircle size={18} />
+              <span>Reset</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border border-gray-100">
+        <table className="min-w-full divide-y divide-gray-50">
+          <thead className="bg-gray-50">
+            <tr>
+              <th 
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('created_at')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Tanggal</span>
+                  {sortColumn === 'created_at' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+                  {sortColumn !== 'created_at' && <ArrowUpDown size={16} className="text-gray-300" />}
+                </div>
+              </th>
+              <th 
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('nama_barang')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Nama Barang</span>
+                  {sortColumn === 'nama_barang' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+                  {sortColumn !== 'nama_barang' && <ArrowUpDown size={16} className="text-gray-300" />}
+                </div>
+              </th>
+              <th 
+                scope="col" 
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort('jumlah')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Jumlah</span>
+                  {sortColumn === 'jumlah' && (sortDirection === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
+                  {sortColumn !== 'jumlah' && <ArrowUpDown size={16} className="text-gray-300" />}
+                </div>
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pengambil</th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alasan</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {loading ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-12 text-center">
+                  <Loader2 className="animate-spin mx-auto text-blue-600 mb-2" size={32} />
+                  <p className="text-gray-500">Memuat riwayat...</p>
+                </td>
+              </tr>
+            ) : history.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-12 text-center">
+                  <History size={48} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-gray-500">Tidak ada riwayat pengambilan barang.</p>
+                </td>
+              </tr>
+            ) : (
+              history.map((entry) => (
+                <tr key={entry.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => handleOpenDetailModal(entry)}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(entry.created_at).toLocaleString('id-ID')}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      <Package size={18} className="text-gray-400" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{entry.items.nama_barang}</p>
+                        <p className="text-xs text-gray-500 font-mono">{entry.items.kode_barang}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-orange-100 text-orange-800">
+                      -{entry.jumlah}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center space-x-2">
+                      <UserIcon size={18} className="text-gray-400" />
+                      <p className="text-sm text-gray-900">{entry.profiles?.full_name || entry.user_name || 'Unknown User'}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700 max-w-xs truncate">
+                    {entry.alasan || '-'}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center space-x-4">
+          <p className="text-sm text-gray-500">
+            Menampilkan <span className="font-medium">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium">{totalCount}</span> riwayat
+          </p>
+          <select
+            id="itemsPerPage"
+            value={itemsPerPage}
+            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+          >
+            <option value={5}>5 per halaman</option>
+            <option value={10}>10 per halaman</option>
+            <option value={20}>20 per halaman</option>
+            <option value={50}>50 per halaman</option>
+          </select>
+        </div>
+        <nav
+          className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination"
+        >
+          <button
+            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+            disabled={page === 1}
+            className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <span className="sr-only">Previous</span>
+            <ChevronLeft size={20} aria-hidden="true" />
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+            <button
+              key={pageNumber}
+              onClick={() => setPage(pageNumber)}
+              aria-current={page === pageNumber ? 'page' : undefined}
+              className={cn(
+                "relative inline-flex items-center px-4 py-2 border text-sm font-medium",
+                page === pageNumber
+                  ? "z-10 bg-blue-50 border-blue-500 text-blue-600"
+                  : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
+              )}
+            >
+              {pageNumber}
+            </button>
+          ))}
+          <button
+            onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={page === totalPages}
+            className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <span className="sr-only">Next</span>
+            <ChevronRight size={20} aria-hidden="true" />
+          </button>
+        </nav>
+      </div>
+
+      {/* Detail History Modal */}
+      {isDetailModalOpen && selectedHistoryEntryForDetail && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsDetailModalOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <h3 className="text-lg font-bold text-gray-900">Detail Riwayat Pengambilan</h3>
+              <button 
+                onClick={() => setIsDetailModalOpen(false)} 
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4 text-sm">
+              <div>
+                <p className="font-medium text-gray-700">Tanggal:</p>
+                <p className="text-gray-900">{new Date(selectedHistoryEntryForDetail.created_at).toLocaleString('id-ID')}</p>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700">Nama Barang:</p>
+                <p className="text-gray-900">{selectedHistoryEntryForDetail.items.nama_barang}</p>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700">Kode Barang:</p>
+                <p className="text-gray-900">{selectedHistoryEntryForDetail.items.kode_barang}</p>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700">Lokasi:</p>
+                <p className="text-gray-900">{selectedHistoryEntryForDetail.items.lokasi || '-'}</p>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700">Jumlah:</p>
+                <p className="text-gray-900">{selectedHistoryEntryForDetail.jumlah}</p>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700">Pengambil:</p>
+                <p className="text-gray-900">{selectedHistoryEntryForDetail.profiles?.full_name || selectedHistoryEntryForDetail.user_name || 'Unknown User'}</p>
+              </div>
+              <div>
+                <p className="font-medium text-gray-700">Alasan:</p>
+                <p className="text-gray-900">{selectedHistoryEntryForDetail.alasan || '-'}</p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end bg-gray-50/50">
+              <button
+                onClick={() => setIsDetailModalOpen(false)}
+                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
