@@ -4,6 +4,7 @@ import Login from './components/Auth/Login';
 import Layout from './components/Dashboard/Layout';
 import DashboardHome from './components/Dashboard/Home';
 import MasterBarang from './components/Inventory/MasterBarang';
+import MasterLokasi from './components/Inventory/MasterLokasi';
 import TakeItemHistory from './components/Inventory/TakeItemHistory';
 import LogItemChange from './components/Inventory/LogItemChange';
 import StockOutHistory from './components/Inventory/StockOutHistory';
@@ -18,7 +19,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E]">
         <div className="text-center">
           <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={48} />
           <p className="text-gray-600 font-medium">Loading StockMaster Pro...</p>
@@ -35,6 +36,7 @@ export default function App() {
         <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
           {activeTab === 'dashboard' && <DashboardHome />}
           {activeTab === 'barang' && <MasterBarang setActiveTab={setActiveTab} />}
+          {activeTab === 'lokasi' && <MasterLokasi />}
           {activeTab === 'take-item-history' && <TakeItemHistory />}
           {activeTab === 'log-item-change' && <LogItemChange />}
           {activeTab === 'stock-out-history' && <StockOutHistory />}

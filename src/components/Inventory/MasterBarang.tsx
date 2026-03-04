@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { 
   Plus, Search, Filter, Edit2, ChevronLeft, ChevronRight, 
-  Package, Image as ImageIcon, Upload, X, Loader2, AlertCircle,
+  Package, Image as ImageIcon, Upload, Download, X, Loader2, AlertCircle,
   FileSpreadsheet, CheckSquare, Square, MoreHorizontal,
   ArrowUpDown, ChevronUp, ChevronDown, Info, Calendar, MapPin, Hash,
   LogOut, History, ClipboardList, Archive
@@ -34,7 +34,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
   const [totalCount, setTotalCount] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<any[]>([]);
   const [sortColumn, setSortColumn] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -57,12 +57,16 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
   const [importLoading, setImportLoading] = useState(false);
   const [importPreviewData, setImportPreviewData] = useState<any[]>([]);
 
+  // Export state
+  const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
+  const [exportData, setExportData] = useState<any[]>([]);
+
   // Form State
   const [formData, setFormData] = useState({
     kode_barang: '',
     nama_barang: '',
     jumlah_barang: 0,
-    lokasi: '',
+    kode_lokasi: '',
     deskripsi: '',
     foto_urls: [] as string[],
   });
@@ -77,7 +81,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
   });
 
   const [bulkEditData, setBulkEditData] = useState({
-    lokasi: '',
+    kode_lokasi: '',
     jumlah_barang: -1, // -1 means no change
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -101,14 +105,14 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
   async function fetchAvailableLocations() {
     try {
       const { data, error } = await supabase
-        .from('items')
-        .select('lokasi');
+        .from('master_lokasi')
+        .select('*')
+        .order('nama_lokasi');
       
       if (error) throw error;
       
       if (data) {
-        const uniqueLocs = Array.from(new Set(data.map(item => item.lokasi).filter(Boolean))) as string[];
-        setAvailableLocations(uniqueLocs.sort());
+        setAvailableLocations(data);
       }
     } catch (err) {
       console.error('Error fetching locations:', err);
@@ -120,14 +124,19 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
     try {
       let query = supabase
         .from('items')
-        .select('*', { count: 'exact' });
+        .select(`
+          *,
+          master_lokasi (
+            nama_lokasi
+          )
+        `, { count: 'exact' });
 
       if (debouncedSearch) {
         query = query.or(`nama_barang.ilike.%${debouncedSearch}%,kode_barang.ilike.%${debouncedSearch}%`);
       }
 
       if (filterLokasi) {
-        query = query.eq('lokasi', filterLokasi);
+        query = query.eq('kode_lokasi', filterLokasi);
       }
 
       const from = (page - 1) * itemsPerPage;
@@ -210,6 +219,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
         .insert([{
           item_id: selectedItemForTake.id,
           jumlah: takeItemData.jumlah,
+          kode_lokasi: selectedItemForTake.kode_lokasi, // Add this
           user_id: profile?.id,
           user_name: profile?.full_name || profile?.email,
           alasan: takeItemData.alasan
@@ -245,7 +255,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
           kode_barang: selectedItemForStockOut.kode_barang,
           nama_barang: selectedItemForStockOut.nama_barang,
           jumlah_barang: selectedItemForStockOut.jumlah_barang,
-          lokasi: selectedItemForStockOut.lokasi,
+          kode_lokasi: selectedItemForStockOut.kode_lokasi,
           foto_urls: selectedItemForStockOut.foto_urls,
           deskripsi: selectedItemForStockOut.deskripsi,
           created_at: selectedItemForStockOut.created_at,
@@ -291,7 +301,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
         kode_barang: item.kode_barang,
         nama_barang: item.nama_barang,
         jumlah_barang: item.jumlah_barang,
-        lokasi: item.lokasi || '',
+        kode_lokasi: item.kode_lokasi || '',
         deskripsi: item.deskripsi || '',
         foto_urls: item.foto_urls || [],
       });
@@ -302,7 +312,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
         kode_barang: `BRG-${Math.floor(10000 + Math.random() * 90000)}`,
         nama_barang: '',
         jumlah_barang: 0,
-        lokasi: '',
+        kode_lokasi: '',
         deskripsi: '',
         foto_urls: [],
       });
@@ -332,7 +342,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
           nama_barang: row['Nama Barang'] || row['nama_barang'],
           jumlah_barang: parseInt(row['Jumlah'] || row['jumlah_barang']) || 0,
           deskripsi: row['Deskripsi'] || row['deskripsi'] || '',
-          lokasi: row['Lokasi'] || row['lokasi'] || '',
+          nama_lokasi: row['Lokasi'] || row['lokasi'] || '', // Temporary store name
         })).filter(item => item.nama_barang);
 
         if (previewData.length === 0) {
@@ -355,7 +365,29 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
   const handleConfirmImport = async () => {
     setImportLoading(true);
     try {
-      const { error } = await supabase.from('items').insert(importPreviewData);
+      // 1. Handle locations
+      const uniqueLocationNames = Array.from(new Set(importPreviewData.map(item => item.nama_lokasi).filter(Boolean))) as string[];
+      
+      // Fetch existing locations
+      const { data: existingLocs } = await supabase.from('master_lokasi').select('*');
+      const locMap = new Map((existingLocs || []).map(l => [l.nama_lokasi.toLowerCase(), l.kode_lokasi]));
+
+      // Create missing locations
+      for (const name of uniqueLocationNames) {
+        if (!locMap.has(name.toLowerCase())) {
+          const newKode = `LOC-${Math.floor(1000 + Math.random() * 9000)}`;
+          const { error: locError } = await supabase.from('master_lokasi').insert([{ kode_lokasi: newKode, nama_lokasi: name }]);
+          if (!locError) locMap.set(name.toLowerCase(), newKode);
+        }
+      }
+
+      // 2. Map items to use kode_lokasi
+      const itemsToInsert = importPreviewData.map(({ nama_lokasi, ...rest }) => ({
+        ...rest,
+        kode_lokasi: locMap.get(nama_lokasi.toLowerCase()) || null
+      }));
+
+      const { error } = await supabase.from('items').insert(itemsToInsert);
       if (error) throw error;
 
       showToast(`${importPreviewData.length} barang berhasil diimport`, 'success');
@@ -369,6 +401,82 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
     }
   };
 
+  const handlePrepareExport = () => {
+    try {
+      if (items.length === 0) {
+        showToast('Tidak ada data untuk diexport', 'info');
+        return;
+      }
+
+      // Prepare data for export
+      const dataToExport = items.map(item => ({
+        'Kode Barang': item.kode_barang,
+        'Nama Barang': item.nama_barang,
+        'Jumlah': item.jumlah_barang,
+        'Lokasi': (item as any).master_lokasi?.nama_lokasi || '-',
+        'Deskripsi': item.deskripsi || '-',
+        'Tanggal Dibuat': new Date(item.created_at).toLocaleDateString('id-ID'),
+      }));
+
+      setExportData(dataToExport);
+      setIsExportPreviewOpen(true);
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menyiapkan data export', 'error');
+    }
+  };
+
+  const handleConfirmExport = () => {
+    try {
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Master Barang');
+
+      // Save file
+      XLSX.writeFile(wb, `Master_Barang_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      setIsExportPreviewOpen(false);
+      showToast('Data berhasil diexport ke Excel', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengeksport data', 'error');
+    }
+  };
+
+  const handleExport = () => {
+    try {
+      if (items.length === 0) {
+        showToast('Tidak ada data untuk diexport', 'info');
+        return;
+      }
+
+      // Prepare data for export
+      const exportData = items.map(item => ({
+        'Kode Barang': item.kode_barang,
+        'Nama Barang': item.nama_barang,
+        'Jumlah': item.jumlah_barang,
+        'Lokasi': (item as any).master_lokasi?.nama_lokasi || '-',
+        'Deskripsi': item.deskripsi || '-',
+        'Tanggal Dibuat': new Date(item.created_at).toLocaleDateString('id-ID'),
+      }));
+
+      // Create worksheet
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Master Barang');
+
+      // Save file
+      XLSX.writeFile(wb, `Master_Barang_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      showToast('Data berhasil diexport ke Excel', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal mengeksport data', 'error');
+    }
+  };
+
   const handleBulkEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItems.length) return;
@@ -376,7 +484,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
     try {
       const updatePayload: any = {};
-      if (bulkEditData.lokasi) updatePayload.lokasi = bulkEditData.lokasi;
+      if (bulkEditData.kode_lokasi) updatePayload.kode_lokasi = bulkEditData.kode_lokasi;
       if (bulkEditData.jumlah_barang !== -1) updatePayload.jumlah_barang = bulkEditData.jumlah_barang;
 
       if (Object.keys(updatePayload).length === 0) {
@@ -537,7 +645,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
         kode_barang: item.kode_barang,
         nama_barang: item.nama_barang,
         jumlah_barang: item.jumlah_barang,
-        lokasi: item.lokasi,
+        kode_lokasi: item.kode_lokasi,
         foto_urls: item.foto_urls,
         deskripsi: item.deskripsi,
         created_at: item.created_at,
@@ -605,6 +713,13 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                 <span>Import Excel</span>
                 <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleExcelImport} disabled={importLoading} />
               </label>
+              <button
+                onClick={handlePrepareExport}
+                className="flex items-center justify-center space-x-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
+              >
+                <Download size={20} />
+                <span>Export Excel</span>
+              </button>
               <button
                 onClick={() => handleOpenModal()}
                 className="flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium"
@@ -676,7 +791,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
             >
               <option value="">Semua Lokasi</option>
               {availableLocations.map((loc) => (
-                <option key={loc} value={loc}>{loc}</option>
+                <option key={loc.kode_lokasi} value={loc.kode_lokasi}>{loc.nama_lokasi}</option>
               ))}
             </select>
             {filterLokasi && (
@@ -734,11 +849,11 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                 </th>
                 <th 
                   className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group"
-                  onClick={() => handleSort('lokasi')}
+                  onClick={() => handleSort('kode_lokasi')}
                 >
                   <div className="flex items-center space-x-1">
                     <span>Lokasi</span>
-                    {sortColumn === 'lokasi' ? (
+                    {sortColumn === 'kode_lokasi' ? (
                       sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
                     ) : (
                       <ArrowUpDown size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -823,7 +938,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                        {item.lokasi || 'Unassigned'}
+                        {(item as any).master_lokasi?.nama_lokasi || 'Unassigned'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -835,7 +950,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end space-x-2">
                         {profile?.role === 'admin' ? (
                           <>
                             <button
@@ -1005,14 +1120,17 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
-                      <input
-                        type="text"
+                      <select
                         required
-                        value={formData.lokasi}
-                        onChange={(e) => setFormData({ ...formData, lokasi: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="Contoh: Rak A-01"
-                      />
+                        value={formData.kode_lokasi}
+                        onChange={(e) => setFormData({ ...formData, kode_lokasi: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white"
+                      >
+                        <option value="">Pilih Lokasi</option>
+                        {availableLocations.map((loc) => (
+                          <option key={loc.kode_lokasi} value={loc.kode_lokasi}>{loc.nama_lokasi}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div>
@@ -1112,13 +1230,16 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
             <form onSubmit={handleBulkEdit} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Lokasi</label>
-                <input
-                  type="text"
-                  value={bulkEditData.lokasi}
-                  onChange={(e) => setBulkEditData({ ...bulkEditData, lokasi: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="Ketik lokasi baru..."
-                />
+                <select
+                  value={bulkEditData.kode_lokasi}
+                  onChange={(e) => setBulkEditData({ ...bulkEditData, kode_lokasi: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm bg-white"
+                >
+                  <option value="">Pilih Lokasi Baru...</option>
+                  {availableLocations.map((loc) => (
+                    <option key={loc.kode_lokasi} value={loc.kode_lokasi}>{loc.nama_lokasi}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Jumlah Stok</label>
@@ -1178,7 +1299,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                       <td className="py-3 font-mono text-xs">{row.kode_barang}</td>
                       <td className="py-3 font-medium">{row.nama_barang}</td>
                       <td className="py-3">{row.jumlah_barang}</td>
-                      <td className="py-3">{row.lokasi}</td>
+                      <td className="py-3">{row.nama_lokasi}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1364,7 +1485,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                         </div>
                         <div>
                           <p className="text-xs text-gray-500">Lokasi</p>
-                          <p className="text-sm font-medium text-gray-700">{selectedItemForDetail.lokasi || 'N/A'}</p>
+                          <p className="text-sm font-medium text-gray-700">{(selectedItemForDetail as any).master_lokasi?.nama_lokasi || 'N/A'}</p>
                         </div>
                       </div>
                       <div className="flex items-start space-x-3">
@@ -1526,7 +1647,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-400 uppercase font-bold">Lokasi</p>
-                      <p className="text-sm text-gray-700">{selectedItemForStockOut.lokasi || '-'}</p>
+                      <p className="text-sm text-gray-700">{(selectedItemForStockOut as any).master_lokasi?.nama_lokasi || '-'}</p>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -1632,6 +1753,55 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
               >
                 {formLoading ? <Loader2 className="animate-spin" size={18} /> : null}
                 <span>Konfirmasi Keluarkan Massal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Preview Modal */}
+      {isExportPreviewOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
+              <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 text-gray-500 font-semibold">
+                    {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
+                      <th key={key} className="pb-3 px-2">{key}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {exportData.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      {Object.values(row).map((val: any, i) => (
+                        <td key={i} className="py-2 px-2 text-gray-600">{val}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+              <button
+                onClick={() => setIsExportPreviewOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConfirmExport}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-medium flex items-center space-x-2"
+              >
+                <Download size={18} />
+                <span>Konfirmasi Download</span>
               </button>
             </div>
           </div>

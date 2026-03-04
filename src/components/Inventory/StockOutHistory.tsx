@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { 
   Search, Filter, Calendar, Package, MapPin, 
-  ChevronLeft, ChevronRight, Loader2, Info, X, ArrowUpDown, ChevronUp, ChevronDown
+  ChevronLeft, ChevronRight, Loader2, Info, X, ArrowUpDown, ChevronUp, ChevronDown, Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { useAuth } from '../../hooks/useAuth';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -17,7 +19,7 @@ interface StockOutEntry {
   kode_barang: string;
   nama_barang: string;
   jumlah_barang: number;
-  lokasi: string;
+  kode_lokasi: string; // Change from lokasi to kode_lokasi
   foto_urls: string[];
   deskripsi: string;
   created_at: string;
@@ -25,9 +27,13 @@ interface StockOutEntry {
   tanggal_keluar: string;
   keterangan_alasan: string;
   user_name: string;
+  master_lokasi: { // Add join
+    nama_lokasi: string;
+  };
 }
 
 export default function StockOutHistory() {
+  const { profile } = useAuth();
   const [history, setHistory] = useState<StockOutEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -35,26 +41,31 @@ export default function StockOutHistory() {
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortColumn, setSortColumn] = useState<string>('tanggal_keluar');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const [selectedEntry, setSelectedEntry] = useState<StockOutEntry | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
+  // Export state
+  const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
+  const [exportData, setExportData] = useState<any[]>([]);
+
   useEffect(() => {
     fetchHistory();
-  }, [page, search, startDate, endDate, sortColumn, sortOrder]);
+  }, [page, search, startDate, endDate, sortColumn, sortOrder, itemsPerPage]);
 
   async function fetchHistory() {
     setLoading(true);
     try {
       let query = supabase
         .from('stock_keluar_history')
-        .select('*', { count: 'exact' });
+        .select('*, master_lokasi(nama_lokasi)', { count: 'exact' });
 
       if (search) {
-        query = query.or(`nama_barang.ilike.%${search}%,kode_barang.ilike.%${search}%,lokasi.ilike.%${search}%`);
+        query = query.or(`nama_barang.ilike.%${search}%,kode_barang.ilike.%${search}%`);
+        // Note: or filter on joined table might be tricky, but let's try
       }
 
       if (startDate) {
@@ -91,6 +102,28 @@ export default function StockOutHistory() {
     }
   };
 
+  const handlePrepareExport = () => {
+    const dataToExport = history.map(entry => ({
+      'Tanggal Keluar': new Date(entry.tanggal_keluar).toLocaleString('id-ID'),
+      'Kode Barang': entry.kode_barang,
+      'Nama Barang': entry.nama_barang,
+      'Lokasi Terakhir': entry.master_lokasi?.nama_lokasi || entry.kode_lokasi || '-',
+      'Jumlah': entry.jumlah_barang,
+      'Oleh': entry.user_name,
+      'Alasan': entry.keterangan_alasan || '-'
+    }));
+    setExportData(dataToExport);
+    setIsExportPreviewOpen(true);
+  };
+
+  const handleConfirmExport = () => {
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Stock Out History");
+    XLSX.writeFile(workbook, `Stock_Out_History_${new Date().toISOString().split('T')[0]}.xlsx`);
+    setIsExportPreviewOpen(false);
+  };
+
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   return (
@@ -100,6 +133,16 @@ export default function StockOutHistory() {
           <h2 className="text-2xl font-bold text-gray-900">Riwayat Stock Keluar</h2>
           <p className="text-gray-500">Daftar barang yang telah dikeluarkan dari inventaris</p>
         </div>
+        {profile?.role === 'admin' && (
+          <button
+            onClick={handlePrepareExport}
+            disabled={history.length === 0}
+            className="flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-lg transition-all shadow-sm font-medium disabled:opacity-50"
+          >
+            <Download size={20} />
+            <span>Export Excel</span>
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -202,7 +245,7 @@ export default function StockOutHistory() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                        {entry.lokasi}
+                        {entry.master_lokasi?.nama_lokasi || entry.kode_lokasi || '-'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-gray-900">{entry.jumlah_barang}</td>
@@ -228,29 +271,75 @@ export default function StockOutHistory() {
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center space-x-4">
             <p className="text-sm text-gray-500">
-              Halaman <span className="font-medium">{page}</span> dari <span className="font-medium">{totalPages}</span>
+              Menampilkan <span className="font-medium text-gray-900">{(page - 1) * itemsPerPage + 1}</span> sampai <span className="font-medium text-gray-900">{Math.min(page * itemsPerPage, totalCount)}</span> dari <span className="font-medium text-gray-900">{totalCount}</span> riwayat
             </p>
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-500">Baris:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              >
+                {[10, 20, 50, 100, 1000].map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {totalPages > 1 && (
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 transition-colors"
+                className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                <ChevronLeft size={20} />
+                <ChevronLeft size={18} />
               </button>
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                  if (
+                    p === 1 || 
+                    p === totalPages || 
+                    (p >= page - 1 && p <= page + 1)
+                  ) {
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={cn(
+                          "w-8 h-8 rounded-lg text-sm font-medium transition-all",
+                          page === p 
+                            ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
+                            : "text-gray-600 hover:bg-white border border-transparent hover:border-gray-200"
+                        )}
+                      >
+                        {p}
+                      </button>
+                    );
+                  }
+                  if (p === 2 || p === totalPages - 1) {
+                    return <span key={p} className="px-1 text-gray-400">...</span>;
+                  }
+                  return null;
+                })}
+              </div>
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 transition-colors"
+                className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                <ChevronRight size={20} />
+                <ChevronRight size={18} />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Detail Modal */}
@@ -281,7 +370,7 @@ export default function StockOutHistory() {
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-50">
                         <span className="text-sm text-gray-500">Lokasi Terakhir</span>
-                        <span className="text-sm font-medium text-gray-900">{selectedEntry.lokasi}</span>
+                        <span className="text-sm font-medium text-gray-900">{selectedEntry.master_lokasi?.nama_lokasi || selectedEntry.kode_lokasi || '-'}</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-50">
                         <span className="text-sm text-gray-500">Jumlah</span>
@@ -345,6 +434,55 @@ export default function StockOutHistory() {
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Preview Modal */}
+      {isExportPreviewOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
+              <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 text-gray-500 font-semibold">
+                    {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
+                      <th key={key} className="pb-3 px-2">{key}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {exportData.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      {Object.values(row).map((val: any, i) => (
+                        <td key={i} className="py-2 px-2 text-gray-600">{val}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+              <button
+                onClick={() => setIsExportPreviewOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConfirmExport}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-medium flex items-center space-x-2"
+              >
+                <Download size={18} />
+                <span>Konfirmasi Download</span>
               </button>
             </div>
           </div>

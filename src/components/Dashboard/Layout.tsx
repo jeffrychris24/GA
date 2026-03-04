@@ -28,6 +28,7 @@ export default function Layout({ children, activeTab, setActiveTab }: LayoutProp
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { id: 'barang', label: 'Master Barang', icon: <Package size={20} /> },
+    { id: 'lokasi', label: 'Master Lokasi', icon: <MapPin size={20} /> },
     { id: 'take-item-history', label: 'Take Item History', icon: <History size={20} /> },
     { id: 'log-item-change', label: 'Log Item Change', icon: <ClipboardList size={20} /> },
     { id: 'stock-out-history', label: 'Riwayat Stock Keluar', icon: <Archive size={20} /> },
@@ -42,7 +43,7 @@ export default function Layout({ children, activeTab, setActiveTab }: LayoutProp
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E] flex">
       {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
         <div 
@@ -53,7 +54,7 @@ export default function Layout({ children, activeTab, setActiveTab }: LayoutProp
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-[#1e293b] text-white transition-transform duration-300 transform lg:translate-x-0 lg:static lg:inset-0",
+        "fixed inset-y-0 left-0 z-50 w-64 bg-[#3D2C44] text-white transition-transform duration-300 transform lg:translate-x-0 lg:static lg:inset-0",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="h-full flex flex-col">
@@ -103,7 +104,7 @@ export default function Layout({ children, activeTab, setActiveTab }: LayoutProp
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Navbar */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-30">
           <div className="flex items-center space-x-4">
             <button 
               onClick={() => setIsSidebarOpen(true)}

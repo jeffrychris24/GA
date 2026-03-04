@@ -18,20 +18,18 @@ export default function DashboardHome() {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        const [itemsRes, profilesRes] = await Promise.all([
-          supabase.from('items').select('*'),
-          supabase.from('profiles').select('count'),
+        const [itemsRes, profilesRes, locationsRes] = await Promise.all([
+          supabase.from('items').select('*, master_lokasi(nama_lokasi)'),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('master_lokasi').select('*', { count: 'exact', head: true }),
         ]);
 
         if (itemsRes.data) {
           const totalStock = itemsRes.data.reduce((acc, item) => acc + (item.jumlah_barang || 0), 0);
           
-          // Unique locations from items
-          const uniqueLocations = new Set(itemsRes.data.map(item => item.lokasi).filter(Boolean));
-
           setStats({
             totalItems: itemsRes.data.length,
-            totalLocations: uniqueLocations.size,
+            totalLocations: locationsRes.count || 0,
             totalUsers: profilesRes.count || 0,
             totalStock,
           });
@@ -42,11 +40,11 @@ export default function DashboardHome() {
           ).slice(0, 5);
           setRecentItems(sorted);
 
-          // Chart data: Items per location
+          // Chart data: Sum of jumlah_barang per location
           const locationMap: Record<string, number> = {};
           itemsRes.data.forEach(item => {
-            const locName = item.lokasi || 'Unknown';
-            locationMap[locName] = (locationMap[locName] || 0) + 1;
+            const locName = (item as any).master_lokasi?.nama_lokasi || item.kode_lokasi || 'Tanpa Lokasi';
+            locationMap[locName] = (locationMap[locName] || 0) + (item.jumlah_barang || 0);
           });
           setChartData(Object.entries(locationMap).map(([name, value]) => ({ name, value })));
         }
@@ -127,7 +125,7 @@ export default function DashboardHome() {
                   <tr key={item.id} className="text-sm hover:bg-gray-50 transition-colors">
                     <td className="py-4 font-medium text-gray-900">{item.nama_barang}</td>
                     <td className="py-4 text-gray-500">{item.kode_barang}</td>
-                    <td className="py-4 text-gray-500">{item.lokasi || '-'}</td>
+                    <td className="py-4 text-gray-500">{(item as any).master_lokasi?.nama_lokasi || item.kode_lokasi || '-'}</td>
                     <td className="py-4 text-right font-semibold text-blue-600">{item.jumlah_barang}</td>
                   </tr>
                 ))}

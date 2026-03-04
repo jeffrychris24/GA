@@ -1,5 +1,5 @@
 {
   "name": "StockMaster Pro",
-  "description": "A professional inventory management system powered by Supabase and React.",
+  "description": "A professional inventory management system with Master Barang and Master Lokasi management, powered by Supabase and React.",
   "requestFramePermissions": []
 }

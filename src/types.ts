@@ -12,11 +12,17 @@ export interface Item {
   kode_barang: string;
   nama_barang: string;
   jumlah_barang: number;
-  lokasi: string | null;
+  kode_lokasi: string | null;
   foto_urls: string[];
   deskripsi: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Location {
+  kode_lokasi: string;
+  nama_lokasi: string;
+  created_at?: string;
 }
 
 export interface AppSettings {

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { Loader2, History, Package, User as UserIcon, Calendar, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Search, Filter, XCircle } from 'lucide-react';
+import { Loader2, History, Package, User as UserIcon, Calendar, ArrowUpDown, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, X, Search, Filter, XCircle, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -13,6 +14,7 @@ interface TakeItemHistoryEntry {
   id: string;
   item_id: string;
   jumlah: number;
+  kode_lokasi: string; // Add this
   user_id: string;
   user_name: string;
   alasan: string;
@@ -20,7 +22,9 @@ interface TakeItemHistoryEntry {
   items: { // Joined item details
     kode_barang: string;
     nama_barang: string;
-    lokasi: string;
+  };
+  master_lokasi: { // Joined location details
+    nama_lokasi: string;
   };
   profiles: { // Joined user details
     full_name: string;
@@ -47,6 +51,10 @@ export default function TakeItemHistory() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedHistoryEntryForDetail, setSelectedHistoryEntryForDetail] = useState<TakeItemHistoryEntry | null>(null);
 
+  // Export state
+  const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
+  const [exportData, setExportData] = useState<any[]>([]);
+
   const fetchHistory = async () => {
     setLoading(true);
     setError(null);
@@ -56,10 +64,11 @@ export default function TakeItemHistory() {
 
       let query = supabase
         .from('take_item_history')
-        .select(`*, items${searchTerm ? '!inner' : ''}(kode_barang, nama_barang, lokasi), profiles(full_name)`, { count: 'exact' });
+        .select(`*, items${searchTerm ? '!inner' : ''}(kode_barang, nama_barang), master_lokasi(nama_lokasi), profiles(full_name)`, { count: 'exact' });
 
       if (searchTerm) {
-        query = query.or(`nama_barang.ilike.%${searchTerm}%,kode_barang.ilike.%${searchTerm}%,lokasi.ilike.%${searchTerm}%`, { foreignTable: 'items' });
+        query = query.or(`nama_barang.ilike.%${searchTerm}%,kode_barang.ilike.%${searchTerm}%`, { foreignTable: 'items' });
+        query = query.or(`nama_lokasi.ilike.%${searchTerm}%`, { foreignTable: 'master_lokasi' });
       }
 
       if (startDate) {
@@ -71,8 +80,11 @@ export default function TakeItemHistory() {
       }
 
       if (sortColumn) {
-        const column = sortColumn === 'nama_barang' ? 'items.nama_barang' : sortColumn;
-        query = query.order(column, { ascending: sortDirection === 'asc' });
+        if (sortColumn === 'nama_barang') {
+          query = query.order('nama_barang', { foreignTable: 'items', ascending: sortDirection === 'asc' });
+        } else {
+          query = query.order(sortColumn, { ascending: sortDirection === 'asc' });
+        }
       }
 
       const { data, error, count } = await query.range(from, to);
@@ -114,14 +126,48 @@ export default function TakeItemHistory() {
     setPage(1);
   };
 
+  const handlePrepareExport = () => {
+    const dataToExport = history.map(entry => ({
+      'Tanggal': new Date(entry.created_at).toLocaleString('id-ID'),
+      'Kode Barang': entry.items.kode_barang,
+      'Nama Barang': entry.items.nama_barang,
+      'Lokasi': entry.master_lokasi?.nama_lokasi || '-',
+      'Jumlah': entry.jumlah,
+      'Pengambil': entry.profiles?.full_name || entry.user_name || 'Unknown User',
+      'Alasan': entry.alasan || '-'
+    }));
+    setExportData(dataToExport);
+    setIsExportPreviewOpen(true);
+  };
+
+  const handleConfirmExport = () => {
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Take Item History");
+    XLSX.writeFile(workbook, `Take_Item_History_${new Date().toISOString().split('T')[0]}.xlsx`);
+    setIsExportPreviewOpen(false);
+  };
+
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   return (
     <div className="p-6 bg-white rounded-xl shadow-sm">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center space-x-2">
-        <History size={24} className="text-blue-600" />
-        <span>Take Item History</span>
-      </h2>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
+          <History size={24} className="text-blue-600" />
+          <span>Take Item History</span>
+        </h2>
+        {profile?.role === 'admin' && (
+          <button
+            onClick={handlePrepareExport}
+            disabled={history.length === 0}
+            className="flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-all shadow-sm font-medium disabled:opacity-50"
+          >
+            <Download size={20} />
+            <span>Export Excel</span>
+          </button>
+        )}
+      </div>
 
       {error && (
         <div className="bg-red-50 border-l-4 border-red-400 text-red-700 p-4 mb-4" role="alert">
@@ -346,7 +392,7 @@ export default function TakeItemHistory() {
               </div>
               <div>
                 <p className="font-medium text-gray-700">Lokasi:</p>
-                <p className="text-gray-900">{selectedHistoryEntryForDetail.items.lokasi || '-'}</p>
+                <p className="text-gray-900">{selectedHistoryEntryForDetail.master_lokasi?.nama_lokasi || '-'}</p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">Jumlah:</p>
@@ -367,6 +413,55 @@ export default function TakeItemHistory() {
                 className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Preview Modal */}
+      {isExportPreviewOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
+              <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-gray-100 text-gray-500 font-semibold">
+                    {exportData.length > 0 && Object.keys(exportData[0]).map(key => (
+                      <th key={key} className="pb-3 px-2">{key}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {exportData.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      {Object.values(row).map((val: any, i) => (
+                        <td key={i} className="py-2 px-2 text-gray-600">{val}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-gray-50/50">
+              <button
+                onClick={() => setIsExportPreviewOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConfirmExport}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-medium flex items-center space-x-2"
+              >
+                <Download size={18} />
+                <span>Konfirmasi Download</span>
               </button>
             </div>
           </div>

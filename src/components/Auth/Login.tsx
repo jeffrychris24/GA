@@ -54,7 +54,7 @@ export default function Login() {
       </div>
 
       {/* Right Side: Login Form */}
-      <div className="flex-1 flex flex-col justify-center items-center p-8 bg-gray-50">
+      <div className="flex-1 flex flex-col justify-center items-center p-8 bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E]">
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mb-4 text-white">
