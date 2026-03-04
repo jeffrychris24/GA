@@ -4,7 +4,7 @@ import { useSettings } from '../../hooks/useSettings';
 import { LogIn, Mail, Lock, Loader2 } from 'lucide-react';
 
 export default function Login() {
-  const { settings } = useSettings();
+  const { settings, loading: settingsLoading } = useSettings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,6 +37,17 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  if (settingsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E]">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="animate-spin text-blue-600" size={48} />
+          <p className="text-gray-600 font-medium animate-pulse">Menyiapkan Halaman Login...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row">

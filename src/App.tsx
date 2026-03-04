@@ -22,7 +22,7 @@ export default function App() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E]">
         <div className="text-center">
           <Loader2 className="animate-spin text-blue-600 mx-auto mb-4" size={48} />
-          <p className="text-gray-600 font-medium">Loading StockMaster Pro...</p>
+          <p className="text-gray-600 font-medium">Menyiapkan Aplikasi...</p>
         </div>
       </div>
     );

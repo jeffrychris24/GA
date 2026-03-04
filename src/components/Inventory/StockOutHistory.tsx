@@ -19,7 +19,8 @@ interface StockOutEntry {
   kode_barang: string;
   nama_barang: string;
   jumlah_barang: number;
-  kode_lokasi: string; // Change from lokasi to kode_lokasi
+  kode_lokasi: string;
+  nama_lokasi: string;
   foto_urls: string[];
   deskripsi: string;
   created_at: string;
@@ -27,9 +28,9 @@ interface StockOutEntry {
   tanggal_keluar: string;
   keterangan_alasan: string;
   user_name: string;
-  master_lokasi: { // Add join
+  master_lokasi: {
     nama_lokasi: string;
-  };
+  } | null;
 }
 
 export default function StockOutHistory() {
@@ -64,8 +65,8 @@ export default function StockOutHistory() {
         .select('*, master_lokasi(nama_lokasi)', { count: 'exact' });
 
       if (search) {
-        query = query.or(`nama_barang.ilike.%${search}%,kode_barang.ilike.%${search}%`);
-        // Note: or filter on joined table might be tricky, but let's try
+        // Search in the history table's own columns for reliability
+        query = query.or(`nama_barang.ilike.%${search}%,kode_barang.ilike.%${search}%,nama_lokasi.ilike.%${search}%,user_name.ilike.%${search}%`);
       }
 
       if (startDate) {
@@ -245,7 +246,7 @@ export default function StockOutHistory() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                        {entry.master_lokasi?.nama_lokasi || entry.kode_lokasi || '-'}
+                        {entry.nama_lokasi || entry.master_lokasi?.nama_lokasi || entry.kode_lokasi || '-'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-gray-900">{entry.jumlah_barang}</td>
@@ -286,59 +287,67 @@ export default function StockOutHistory() {
                 }}
                 className="text-sm border border-gray-200 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
               >
-                {[10, 20, 50, 100, 1000].map(size => (
-                  <option key={size} value={size}>{size}</option>
+                {[5, 10, 20, 50].map(size => (
+                  <option key={size} value={size}>{size} per halaman</option>
                 ))}
               </select>
             </div>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <div className="flex items-center space-x-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-                  if (
-                    p === 1 || 
-                    p === totalPages || 
-                    (p >= page - 1 && p <= page + 1)
-                  ) {
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => setPage(p)}
-                        className={cn(
-                          "w-8 h-8 rounded-lg text-sm font-medium transition-all",
-                          page === p 
-                            ? "bg-blue-600 text-white shadow-md shadow-blue-200" 
-                            : "text-gray-600 hover:bg-white border border-transparent hover:border-gray-200"
-                        )}
-                      >
-                        {p}
-                      </button>
-                    );
-                  }
-                  if (p === 2 || p === totalPages - 1) {
-                    return <span key={p} className="px-1 text-gray-400">...</span>;
-                  }
-                  return null;
-                })}
-              </div>
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronRight size={18} />
-              </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-white shadow-sm"
+              title="Halaman Sebelumnya"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            
+            <div className="flex items-center -space-x-px">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                // Show first, last, current, and neighbors
+                if (
+                  p === 1 || 
+                  p === totalPages || 
+                  (p >= page - 1 && p <= page + 1)
+                ) {
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={cn(
+                        "w-9 h-9 flex items-center justify-center text-sm font-medium border transition-all",
+                        page === p 
+                          ? "z-10 bg-blue-600 text-white border-blue-600 shadow-sm" 
+                          : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                      )}
+                    >
+                      {p}
+                    </button>
+                  );
+                }
+                // Show ellipses
+                if (p === 2 || p === totalPages - 1) {
+                  return (
+                    <span key={p} className="w-9 h-9 flex items-center justify-center bg-white border border-gray-200 text-gray-400 text-xs">
+                      ...
+                    </span>
+                  );
+                }
+                return null;
+              })}
             </div>
-          )}
+
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages || totalPages === 0}
+              className="p-2 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all bg-white shadow-sm"
+              title="Halaman Berikutnya"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -370,7 +379,7 @@ export default function StockOutHistory() {
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-50">
                         <span className="text-sm text-gray-500">Lokasi Terakhir</span>
-                        <span className="text-sm font-medium text-gray-900">{selectedEntry.master_lokasi?.nama_lokasi || selectedEntry.kode_lokasi || '-'}</span>
+                        <span className="text-sm font-medium text-gray-900">{selectedEntry.nama_lokasi || selectedEntry.master_lokasi?.nama_lokasi || selectedEntry.kode_lokasi || '-'}</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-50">
                         <span className="text-sm text-gray-500">Jumlah</span>

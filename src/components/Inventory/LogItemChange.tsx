@@ -76,10 +76,12 @@ export default function LogItemChange() {
 
       let query = supabase
         .from('item_audit_logs')
-        .select(`*, profiles(full_name), items${searchTerm ? '!inner' : ''}(kode_barang, nama_barang, kode_lokasi)`, { count: 'exact' });
+        .select(`*, profiles(full_name), items(kode_barang, nama_barang, kode_lokasi)`, { count: 'exact' });
 
       if (searchTerm) {
-        query = query.or(`nama_barang.ilike.%${searchTerm}%,kode_barang.ilike.%${searchTerm}%`, { foreignTable: 'items' });
+        // Search in the audit log's own JSONB columns (works for both active and deleted items)
+        // This avoids cross-table OR issues with the 'items' join
+        query = query.or(`old_values->>nama_barang.ilike.%${searchTerm}%,old_values->>kode_barang.ilike.%${searchTerm}%,new_values->>nama_barang.ilike.%${searchTerm}%,new_values->>kode_barang.ilike.%${searchTerm}%`);
       }
 
       if (startDate) {

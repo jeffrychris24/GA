@@ -52,8 +52,12 @@ CREATE TABLE IF NOT EXISTS app_settings (
 -- Take Item History Table
 CREATE TABLE IF NOT EXISTS take_item_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  item_id UUID REFERENCES items(id) ON DELETE CASCADE,
+  item_id UUID REFERENCES items(id) ON DELETE SET NULL,
+  kode_barang TEXT,
+  nama_barang TEXT,
   jumlah INTEGER NOT NULL,
+  kode_lokasi TEXT,
+  nama_lokasi TEXT,
   user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   user_name TEXT,
   alasan TEXT,
@@ -219,6 +223,7 @@ CREATE TABLE IF NOT EXISTS stock_keluar_history (
   nama_barang TEXT,
   jumlah_barang INTEGER,
   lokasi TEXT,
+  nama_lokasi TEXT,
   foto_urls TEXT[] DEFAULT '{}',
   deskripsi TEXT,
   created_at TIMESTAMP WITH TIME ZONE,

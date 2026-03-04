@@ -13,22 +13,25 @@ function cn(...inputs: ClassValue[]) {
 interface TakeItemHistoryEntry {
   id: string;
   item_id: string;
+  kode_barang: string;
+  nama_barang: string;
   jumlah: number;
-  kode_lokasi: string; // Add this
+  kode_lokasi: string;
+  nama_lokasi: string;
   user_id: string;
   user_name: string;
   alasan: string;
   created_at: string;
-  items: { // Joined item details
+  items: { // Joined item details (optional if item deleted)
     kode_barang: string;
     nama_barang: string;
-  };
+  } | null;
   master_lokasi: { // Joined location details
     nama_lokasi: string;
-  };
+  } | null;
   profiles: { // Joined user details
     full_name: string;
-  };
+  } | null;
 }
 
 export default function TakeItemHistory() {
@@ -64,11 +67,12 @@ export default function TakeItemHistory() {
 
       let query = supabase
         .from('take_item_history')
-        .select(`*, items${searchTerm ? '!inner' : ''}(kode_barang, nama_barang), master_lokasi(nama_lokasi), profiles(full_name)`, { count: 'exact' });
+        .select(`*, items(kode_barang, nama_barang), master_lokasi(nama_lokasi), profiles(full_name)`, { count: 'exact' });
 
       if (searchTerm) {
-        query = query.or(`nama_barang.ilike.%${searchTerm}%,kode_barang.ilike.%${searchTerm}%`, { foreignTable: 'items' });
-        query = query.or(`nama_lokasi.ilike.%${searchTerm}%`, { foreignTable: 'master_lokasi' });
+        // Search in persisted columns in history table
+        // This is much safer and avoids cross-table OR issues
+        query = query.or(`nama_barang.ilike.%${searchTerm}%,kode_barang.ilike.%${searchTerm}%,nama_lokasi.ilike.%${searchTerm}%,user_name.ilike.%${searchTerm}%`);
       }
 
       if (startDate) {
@@ -81,7 +85,8 @@ export default function TakeItemHistory() {
 
       if (sortColumn) {
         if (sortColumn === 'nama_barang') {
-          query = query.order('nama_barang', { foreignTable: 'items', ascending: sortDirection === 'asc' });
+          // Try to sort by items table if it exists, otherwise fallback to history table
+          query = query.order('nama_barang', { ascending: sortDirection === 'asc' });
         } else {
           query = query.order(sortColumn, { ascending: sortDirection === 'asc' });
         }
@@ -283,8 +288,8 @@ export default function TakeItemHistory() {
                     <div className="flex items-center space-x-2">
                       <Package size={18} className="text-gray-400" />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{entry.items.nama_barang}</p>
-                        <p className="text-xs text-gray-500 font-mono">{entry.items.kode_barang}</p>
+                        <p className="text-sm font-medium text-gray-900">{entry.nama_barang || entry.items?.nama_barang || 'Item Deleted'}</p>
+                        <p className="text-xs text-gray-500 font-mono">{entry.kode_barang || entry.items?.kode_barang || '-'}</p>
                       </div>
                     </div>
                   </td>
@@ -384,15 +389,15 @@ export default function TakeItemHistory() {
               </div>
               <div>
                 <p className="font-medium text-gray-700">Nama Barang:</p>
-                <p className="text-gray-900">{selectedHistoryEntryForDetail.items.nama_barang}</p>
+                <p className="text-gray-900">{selectedHistoryEntryForDetail.nama_barang || selectedHistoryEntryForDetail.items?.nama_barang || 'Item Deleted'}</p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">Kode Barang:</p>
-                <p className="text-gray-900">{selectedHistoryEntryForDetail.items.kode_barang}</p>
+                <p className="text-gray-900 font-mono">{selectedHistoryEntryForDetail.kode_barang || selectedHistoryEntryForDetail.items?.kode_barang || '-'}</p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">Lokasi:</p>
-                <p className="text-gray-900">{selectedHistoryEntryForDetail.master_lokasi?.nama_lokasi || '-'}</p>
+                <p className="text-gray-900">{selectedHistoryEntryForDetail.nama_lokasi || selectedHistoryEntryForDetail.master_lokasi?.nama_lokasi || selectedHistoryEntryForDetail.kode_lokasi || '-'}</p>
               </div>
               <div>
                 <p className="font-medium text-gray-700">Jumlah:</p>

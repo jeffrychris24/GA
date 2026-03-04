@@ -214,12 +214,17 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
       if (updateError) throw updateError;
 
       // 2. Record history
+      const locationName = availableLocations.find(loc => loc.kode_lokasi === selectedItemForTake.kode_lokasi)?.nama_lokasi;
+      
       const { error: historyError } = await supabase
         .from('take_item_history')
         .insert([{
           item_id: selectedItemForTake.id,
+          kode_barang: selectedItemForTake.kode_barang,
+          nama_barang: selectedItemForTake.nama_barang,
           jumlah: takeItemData.jumlah,
-          kode_lokasi: selectedItemForTake.kode_lokasi, // Add this
+          kode_lokasi: selectedItemForTake.kode_lokasi,
+          nama_lokasi: locationName,
           user_id: profile?.id,
           user_name: profile?.full_name || profile?.email,
           alasan: takeItemData.alasan
@@ -248,6 +253,8 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
     setFormLoading(true);
     try {
       // 1. Copy to history
+      const locationName = availableLocations.find(loc => loc.kode_lokasi === selectedItemForStockOut.kode_lokasi)?.nama_lokasi;
+      
       const { error: insertError } = await supabase
         .from('stock_keluar_history')
         .insert([{
@@ -256,6 +263,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
           nama_barang: selectedItemForStockOut.nama_barang,
           jumlah_barang: selectedItemForStockOut.jumlah_barang,
           kode_lokasi: selectedItemForStockOut.kode_lokasi,
+          nama_lokasi: locationName,
           foto_urls: selectedItemForStockOut.foto_urls,
           deskripsi: selectedItemForStockOut.deskripsi,
           created_at: selectedItemForStockOut.created_at,
