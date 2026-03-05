@@ -113,7 +113,7 @@ export default function LoginSettings() {
                   value={formData.login_title}
                   onChange={(e) => setFormData({ ...formData, login_title: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholder="Contoh: StockMaster Pro"
+                  placeholder="Contoh: Stock GA"
                   required
                 />
               </div>
@@ -128,7 +128,7 @@ export default function LoginSettings() {
                   value={formData.login_footer}
                   onChange={(e) => setFormData({ ...formData, login_footer: e.target.value })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                  placeholder="Contoh: © 2024 StockMaster Pro"
+                  placeholder="Contoh: © 2024 Stock GA"
                   required
                 />
               </div>

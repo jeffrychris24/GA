@@ -1,4 +1,4 @@
-# StockMaster Pro - Setup Guide
+# Stock GA - Setup Guide
 
 Follow these steps to get your inventory management system up and running with Supabase.
 
@@ -35,4 +35,4 @@ By default, new users are assigned the `user` role. To perform administrative ac
 You can customize the app title, logo, and colors by editing the `app_settings` table in Supabase.
 
 ---
-Enjoy your professional Inventory Management System!
+Enjoy your professional Stock GA System!

@@ -40,7 +40,7 @@ export default function Login() {
 
   if (settingsLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E]">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E]">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="animate-spin text-blue-600" size={48} />
           <p className="text-gray-600 font-medium animate-pulse">Menyiapkan Halaman Login...</p>
@@ -50,7 +50,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div className="min-h-[100dvh] flex flex-col md:flex-row">
       {/* Left Side: Background Image */}
       <div 
         className="hidden md:block md:w-1/2 bg-cover bg-center relative transition-all duration-500"

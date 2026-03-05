@@ -43,7 +43,7 @@ export default function Layout({ children, activeTab, setActiveTab }: LayoutProp
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E] flex">
+    <div className="min-h-[100dvh] bg-gradient-to-br from-[#FFF9E3] via-[#FFDAB9] to-[#FFB08E] flex">
       {/* Sidebar Overlay (Mobile) */}
       {isSidebarOpen && (
         <div 
@@ -136,7 +136,7 @@ export default function Layout({ children, activeTab, setActiveTab }: LayoutProp
               </div>
               <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
                 {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                  <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <UserIcon size={20} className="text-gray-400" />
                 )}

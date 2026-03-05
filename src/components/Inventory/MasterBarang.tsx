@@ -920,6 +920,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                                 src={url} 
                                 alt={`${item.nama_barang} ${idx + 1}`} 
                                 className="w-10 h-10 rounded-lg object-cover border-2 border-white shadow-sm cursor-zoom-in hover:z-10 transition-transform hover:scale-110" 
+                                referrerPolicy="no-referrer"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleOpenCarousel(item.foto_urls, idx);
@@ -1170,7 +1171,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                   <div className="grid grid-cols-3 gap-2">
                     {previewUrls.map((url, idx) => (
                       <div key={idx} className="relative aspect-square group">
-                        <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover rounded-lg border border-gray-200" />
+                        <img src={url} alt={`Preview ${idx}`} className="w-full h-full object-cover rounded-lg border border-gray-200" referrerPolicy="no-referrer" />
                         <button
                           type="button"
                           onClick={() => removePhoto(idx, idx < formData.foto_urls.length)}
@@ -1370,6 +1371,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                 src={carouselImages[currentCarouselIndex]} 
                 alt={`Preview ${currentCarouselIndex + 1}`} 
                 className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-300" 
+                referrerPolicy="no-referrer"
               />
             </div>
 
@@ -1385,7 +1387,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                       currentCarouselIndex === idx ? "border-blue-500 scale-110 shadow-lg" : "border-transparent opacity-50 hover:opacity-100"
                     )}
                   >
-                    <img src={url} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={url} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </button>
                 ))}
               </div>
@@ -1430,6 +1432,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                           src={selectedItemForDetail.foto_urls[0]} 
                           alt={selectedItemForDetail.nama_barang}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          referrerPolicy="no-referrer"
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
                           <Search className="text-white opacity-0 group-hover:opacity-100 transition-opacity" size={32} />
@@ -1451,7 +1454,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                           className="aspect-square rounded-lg bg-gray-100 overflow-hidden border border-gray-100 cursor-zoom-in hover:ring-2 hover:ring-blue-500 transition-all"
                           onClick={() => handleOpenCarousel(selectedItemForDetail.foto_urls, idx + 1)}
                         >
-                          <img src={url} alt={`Preview ${idx + 2}`} className="w-full h-full object-cover" />
+                          <img src={url} alt={`Preview ${idx + 2}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         </div>
                       ))}
                     </div>
@@ -1668,7 +1671,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                         <p className="text-[10px] text-gray-400 uppercase font-bold mb-1">Foto</p>
                         <div className="flex -space-x-2">
                           {selectedItemForStockOut.foto_urls.slice(0, 4).map((url, idx) => (
-                            <img key={idx} src={url} className="w-8 h-8 rounded-full border-2 border-white object-cover" alt="Preview" />
+                            <img key={idx} src={url} className="w-8 h-8 rounded-full border-2 border-white object-cover" alt="Preview" referrerPolicy="no-referrer" />
                           ))}
                         </div>
                       </div>

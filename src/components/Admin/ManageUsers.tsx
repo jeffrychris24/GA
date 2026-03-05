@@ -306,7 +306,7 @@ export default function ManageUsers() {
                 <div className="relative group">
                   <div className="w-24 h-24 rounded-full bg-gray-100 border-4 border-white shadow-md overflow-hidden flex items-center justify-center">
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <UserIcon size={40} className="text-gray-300" />
                     )}
@@ -433,7 +433,7 @@ export default function ManageUsers() {
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-200">
                               {p.avatar_url ? (
-                                <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                                <img src={p.avatar_url} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                               ) : (
                                 <UserIcon size={14} className="text-gray-400" />
                               )}

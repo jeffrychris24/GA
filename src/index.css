@@ -8,4 +8,15 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+  
+  /* Safari backdrop-blur support */
+  .backdrop-blur-sm {
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .backdrop-blur-md {
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .backdrop-blur-lg {
+    -webkit-backdrop-filter: blur(16px);
+  }
 }

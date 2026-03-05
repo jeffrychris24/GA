@@ -206,7 +206,7 @@ export default function MasterLokasi() {
                       <span className="text-sm text-gray-900 font-medium">{loc.nama_lokasi}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end space-x-2">
                         <button
                           onClick={() => handleOpenModal(loc)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
