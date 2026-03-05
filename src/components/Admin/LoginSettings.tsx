@@ -75,9 +75,9 @@ export default function LoginSettings() {
         .getPublicUrl(filePath);
 
       setFormData(prev => ({ ...prev, login_bg_url: publicUrl }));
-      showToast('Gambar berhasil diunggah', 'success');
+      showToast('File berhasil diunggah', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal mengunggah gambar', 'error');
+      showToast(err.message || 'Gagal mengunggah file', 'error');
     } finally {
       setUploading(false);
     }
@@ -149,10 +149,10 @@ export default function LoginSettings() {
                     />
                     <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-xl transition-colors flex items-center shrink-0">
                       {uploading ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />}
-                      <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploading} />
+                      <input type="file" className="hidden" accept="image/*,video/*" onChange={handleFileUpload} disabled={uploading} />
                     </label>
                   </div>
-                  <p className="text-xs text-gray-500">Gunakan URL gambar atau unggah file baru (Rekomendasi: 1920x1080px)</p>
+                  <p className="text-xs text-gray-500">Gunakan URL gambar/video atau unggah file baru (Rekomendasi: 1920x1080px)</p>
                 </div>
               </div>
             </div>
@@ -177,10 +177,21 @@ export default function LoginSettings() {
             Pratinjau Langsung
           </h3>
           <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl border-4 border-white bg-gray-100 group">
-            <div 
-              className="absolute inset-0 bg-cover bg-center transition-all duration-700"
-              style={{ backgroundImage: `url(${formData.login_bg_url || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80'})` }}
-            />
+            {formData.login_bg_url && (formData.login_bg_url.match(/\.(mp4|webm|ogg|mov)$|video/i) || formData.login_bg_url.includes('video')) ? (
+              <video 
+                src={formData.login_bg_url} 
+                autoPlay 
+                muted 
+                loop 
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover transition-all duration-700"
+              />
+            ) : (
+              <div 
+                className="absolute inset-0 bg-cover bg-center transition-all duration-700"
+                style={{ backgroundImage: `url(${formData.login_bg_url || 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80'})` }}
+              />
+            )}
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-6 text-center">
               <div className="text-white">
                 <h4 className="text-2xl font-bold mb-2 break-words">{formData.login_title || 'Judul Anda'}</h4>

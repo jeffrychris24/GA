@@ -51,11 +51,23 @@ export default function Login() {
 
   return (
     <div className="min-h-[100dvh] flex flex-col md:flex-row">
-      {/* Left Side: Background Image */}
-      <div 
-        className="hidden md:block md:w-1/2 bg-cover bg-center relative transition-all duration-500"
-        style={{ backgroundImage: `url(${settings.login_bg_url})`, backgroundSize: 'cover' }}
-      >
+      {/* Left Side: Background Image/Video */}
+      <div className="hidden md:block md:w-1/2 relative transition-all duration-500 overflow-hidden">
+        {settings.login_bg_url && (settings.login_bg_url.match(/\.(mp4|webm|ogg|mov)$|video/i) || settings.login_bg_url.includes('video')) ? (
+          <video 
+            src={settings.login_bg_url} 
+            autoPlay 
+            muted 
+            loop 
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${settings.login_bg_url})` }}
+          />
+        )}
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center p-12">
           <div className="text-white max-w-md">
             <h1 className="text-5xl font-bold mb-4">{settings.login_title}</h1>

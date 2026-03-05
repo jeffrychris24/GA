@@ -236,7 +236,14 @@ export default function StockOutHistory() {
                 </tr>
               ) : (
                 history.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-gray-50 transition-colors group">
+                  <tr 
+                    key={entry.id} 
+                    className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                    onClick={() => {
+                      setSelectedEntry(entry);
+                      setIsDetailModalOpen(true);
+                    }}
+                  >
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(entry.tanggal_keluar).toLocaleString('id-ID')}
                     </td>
@@ -353,16 +360,22 @@ export default function StockOutHistory() {
 
       {/* Detail Modal */}
       {isDetailModalOpen && selectedEntry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsDetailModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Detail Barang Keluar</h3>
               <button onClick={() => setIsDetailModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
                 <X size={20} />
               </button>
             </div>
             
-            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 scrollbar-hide">
               {/* Item Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">

@@ -518,9 +518,15 @@ export default function ManageUsers() {
 
       {/* Add User Modal */}
       {isAddUserModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsAddUserModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900 flex items-center">
                 <UserPlus size={20} className="mr-2 text-blue-600" />
                 Tambah User Baru
@@ -530,7 +536,7 @@ export default function ManageUsers() {
               </button>
             </div>
 
-            <form onSubmit={handleAddUser} className="p-6 space-y-4">
+            <form onSubmit={handleAddUser} className="p-6 space-y-4 overflow-y-auto flex-1 scrollbar-hide">
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Nama Lengkap</label>
                 <input

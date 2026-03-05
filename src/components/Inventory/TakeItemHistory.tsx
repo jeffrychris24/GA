@@ -371,9 +371,15 @@ export default function TakeItemHistory() {
 
       {/* Detail History Modal */}
       {isDetailModalOpen && selectedHistoryEntryForDetail && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setIsDetailModalOpen(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200" 
+          onClick={() => setIsDetailModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col" 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Detail Riwayat Pengambilan</h3>
               <button 
                 onClick={() => setIsDetailModalOpen(false)} 
@@ -382,7 +388,7 @@ export default function TakeItemHistory() {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-4 text-sm">
+            <div className="p-6 space-y-4 text-sm overflow-y-auto flex-1 scrollbar-hide">
               <div>
                 <p className="font-medium text-gray-700">Tanggal:</p>
                 <p className="text-gray-900">{new Date(selectedHistoryEntryForDetail.created_at).toLocaleString('id-ID')}</p>

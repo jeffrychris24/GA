@@ -1072,9 +1072,15 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">
                 {editingItem ? 'Edit Barang' : 'Tambah Barang Baru'}
               </h3>
@@ -1083,7 +1089,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto flex-1 scrollbar-hide">
               {formError && (
                 <div className="p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded flex items-center">
                   <AlertCircle className="mr-2 shrink-0" size={18} />
@@ -1228,15 +1234,21 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
       )}
       {/* Bulk Edit Modal */}
       {isBulkEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => setIsBulkEditOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Edit Massal ({selectedItems.length} barang)</h3>
               <button onClick={() => setIsBulkEditOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleBulkEdit} className="p-6 space-y-4">
+            <form onSubmit={handleBulkEdit} className="p-6 space-y-4 overflow-y-auto flex-1 scrollbar-hide">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Ubah Lokasi</label>
                 <select
@@ -1284,15 +1296,21 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
       )}
       {/* Import Preview Modal */}
       {isImportPreviewOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsImportPreviewOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Preview Import ({importPreviewData.length} barang)</h3>
               <button onClick={() => setIsImportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-6">
+            <div className="flex-1 overflow-auto p-6 scrollbar-hide">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-gray-500 font-semibold">
@@ -1403,9 +1421,18 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
       {/* Item Detail Modal */}
       {isDetailModalOpen && selectedItemForDetail && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => {
+            setIsDetailModalOpen(false);
+            setSelectedItemForDetail(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Detail Barang</h3>
               <button 
                 onClick={() => {
@@ -1418,7 +1445,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
               </button>
             </div>
             
-            <div className="flex-1 overflow-auto p-6">
+            <div className="flex-1 overflow-auto p-6 scrollbar-hide">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Left Column: Photos */}
                 <div className="space-y-4">
@@ -1566,9 +1593,15 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
       {/* Take Item Modal */}
       {isTakeItemModalOpen && selectedItemForTake && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsTakeItemModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Ambil Barang: {selectedItemForTake.nama_barang}</h3>
               <button 
                 onClick={() => setIsTakeItemModalOpen(false)} 
@@ -1577,7 +1610,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); confirmTakeItem(); }} className="p-6 space-y-6">
+            <form onSubmit={(e) => { e.preventDefault(); confirmTakeItem(); }} className="p-6 space-y-6 overflow-y-auto flex-1 scrollbar-hide">
               <div className="space-y-2">
                 <label htmlFor="takeJumlah" className="block text-sm font-medium text-gray-700">Jumlah yang Diambil</label>
                 <input
@@ -1628,9 +1661,15 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
       {/* Stock Out Modal */}
       {isStockOutModalOpen && selectedItemForStockOut && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsStockOutModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Keluarkan Barang ke Riwayat</h3>
               <button 
                 onClick={() => setIsStockOutModalOpen(false)} 
@@ -1639,7 +1678,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 scrollbar-hide">
               {/* Data Preview (Read-only) */}
               <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-4">
                 <div className="flex items-center justify-between border-b border-gray-200 pb-2">
@@ -1715,9 +1754,15 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
       {/* Bulk Stock Out Modal */}
       {isBulkStockOutModalOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsBulkStockOutModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90dvh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Keluarkan {selectedItems.length} Barang</h3>
               <button 
                 onClick={() => setIsBulkStockOutModalOpen(false)} 
@@ -1726,7 +1771,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 scrollbar-hide">
               <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 flex items-start space-x-3">
                 <AlertCircle className="text-orange-600 mt-0.5" size={20} />
                 <div>
@@ -1772,15 +1817,21 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
       {/* Export Preview Modal */}
       {isExportPreviewOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setIsExportPreviewOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90dvh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 shrink-0">
               <h3 className="text-lg font-bold text-gray-900">Preview Export ({exportData.length} baris)</h3>
               <button onClick={() => setIsExportPreviewOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-6">
+            <div className="flex-1 overflow-auto p-6 scrollbar-hide">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-gray-100 text-gray-500 font-semibold">
