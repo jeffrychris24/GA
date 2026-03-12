@@ -6,7 +6,7 @@ import {
   Package, Image as ImageIcon, Upload, Download, X, Loader2, AlertCircle,
   FileSpreadsheet, CheckSquare, Square, MoreHorizontal,
   ArrowUpDown, ChevronUp, ChevronDown, Info, Calendar, MapPin, Hash,
-  LogOut, History, ClipboardList, Archive
+  LogOut, History, ClipboardList, Archive, XCircle
 } from 'lucide-react';
 import { Item } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -860,6 +860,18 @@ export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterB
             </div>
           </div>
         </div>
+        
+        <button
+          onClick={() => {
+            setSearch('');
+            setFilterLokasi('');
+            setPage(1);
+          }}
+          className="flex items-center justify-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm font-medium whitespace-nowrap"
+        >
+          <XCircle size={16} />
+          <span>Reset Pencarian</span>
+        </button>
       </div>
 
       {/* Table */}
@@ -1016,7 +1028,7 @@ export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterB
                               setActiveTab('log-item-change');
                             }
                           }}
-                          className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                           title="Lihat Riwayat"
                         >
                           <History size={18} />
@@ -1028,7 +1040,7 @@ export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterB
                                 e.stopPropagation();
                                 handleStockOut(item);
                               }}
-                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Keluarkan Barang"
                             >
                               <Archive size={18} />
@@ -1038,7 +1050,7 @@ export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterB
                                 e.stopPropagation();
                                 handleTakeItem(item);
                               }}
-                              className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                              className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
                               title="Ambil Barang"
                             >
                               <LogOut size={18} />
@@ -1048,7 +1060,7 @@ export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterB
                                 e.stopPropagation();
                                 handleOpenModal(item);
                               }}
-                              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Edit"
                             >
                               <Edit2 size={18} />
