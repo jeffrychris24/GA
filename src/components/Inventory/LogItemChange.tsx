@@ -27,7 +27,11 @@ interface ItemAuditLogEntry {
   };
 }
 
-export default function LogItemChange() {
+interface LogItemChangeProps {
+  initialSearch?: string;
+}
+
+export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps) {
   const { profile } = useAuth();
   const [auditLogs, setAuditLogs] = useState<ItemAuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,9 +43,16 @@ export default function LogItemChange() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Search and Filter states
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  useEffect(() => {
+    setSearchTerm(initialSearch);
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  }, [initialSearch]);
 
   // Modal state for viewing detailed changes
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);

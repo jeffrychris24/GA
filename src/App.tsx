@@ -16,6 +16,7 @@ import { ToastProvider } from './components/UI/Toast';
 export default function App() {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [historySearch, setHistorySearch] = useState('');
 
   if (loading) {
     return (
@@ -33,12 +34,15 @@ export default function App() {
       {!user ? (
         <Login />
       ) : (
-        <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
+        <Layout activeTab={activeTab} setActiveTab={(tab) => {
+          setActiveTab(tab);
+          setHistorySearch('');
+        }}>
           {activeTab === 'dashboard' && <DashboardHome />}
-          {activeTab === 'barang' && <MasterBarang setActiveTab={setActiveTab} />}
-          {activeTab === 'lokasi' && <MasterLokasi />}
-          {activeTab === 'take-item-history' && <TakeItemHistory />}
-          {activeTab === 'log-item-change' && <LogItemChange />}
+          {activeTab === 'barang' && <MasterBarang setActiveTab={setActiveTab} setHistorySearch={setHistorySearch} />}
+          {activeTab === 'lokasi' && <MasterLokasi setActiveTab={setActiveTab} setHistorySearch={setHistorySearch} />}
+          {activeTab === 'take-item-history' && <TakeItemHistory initialSearch={historySearch} />}
+          {activeTab === 'log-item-change' && <LogItemChange initialSearch={historySearch} />}
           {activeTab === 'stock-out-history' && <StockOutHistory />}
           {activeTab === 'login-settings' && <LoginSettings />}
           {activeTab === 'manage-users' && <ManageUsers />}

@@ -34,7 +34,11 @@ interface TakeItemHistoryEntry {
   } | null;
 }
 
-export default function TakeItemHistory() {
+interface TakeItemHistoryProps {
+  initialSearch?: string;
+}
+
+export default function TakeItemHistory({ initialSearch = '' }: TakeItemHistoryProps) {
   const { profile } = useAuth();
   const [history, setHistory] = useState<TakeItemHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,9 +50,16 @@ export default function TakeItemHistory() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Search and Filter states
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  useEffect(() => {
+    setSearchTerm(initialSearch);
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  }, [initialSearch]);
 
   // Modal state for viewing detailed history
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);

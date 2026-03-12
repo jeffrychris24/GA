@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Package, MapPin, Users, TrendingUp, Clock } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Item } from '../../types';
 
 export default function DashboardHome() {
@@ -18,10 +18,11 @@ export default function DashboardHome() {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        const [itemsRes, profilesRes, locationsRes] = await Promise.all([
+        const [itemsRes, profilesRes, locationsRes, stockOutRes] = await Promise.all([
           supabase.from('items').select('*, master_lokasi(nama_lokasi)'),
           supabase.from('profiles').select('*', { count: 'exact', head: true }),
           supabase.from('master_lokasi').select('*', { count: 'exact', head: true }),
+          supabase.from('stock_keluar_history').select('tanggal_keluar, created_at, jumlah_barang')
         ]);
 
         if (itemsRes.data) {
@@ -40,13 +41,50 @@ export default function DashboardHome() {
           ).slice(0, 5);
           setRecentItems(sorted);
 
-          // Chart data: Sum of jumlah_barang per location
-          const locationMap: Record<string, number> = {};
+          // Chart data: Monthly stats (last 6 months)
+          const months: any[] = [];
+          const now = new Date();
+          for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            months.push({
+              name: d.toLocaleString('id-ID', { month: 'short' }),
+              monthNum: d.getMonth(),
+              year: d.getFullYear(),
+              Baru: 0,
+              Keluar: 0,
+              Diedit: 0
+            });
+          }
+
           itemsRes.data.forEach(item => {
-            const locName = (item as any).master_lokasi?.nama_lokasi || item.kode_lokasi || 'Tanpa Lokasi';
-            locationMap[locName] = (locationMap[locName] || 0) + (item.jumlah_barang || 0);
+            const createdDate = new Date(item.created_at);
+            const updatedDate = item.updated_at ? new Date(item.updated_at) : null;
+            
+            months.forEach(m => {
+              if (createdDate.getMonth() === m.monthNum && createdDate.getFullYear() === m.year) {
+                m.Baru += 1;
+              }
+              // If updated_at exists and is different from created_at (by at least 1 second)
+              if (updatedDate && updatedDate.getTime() - createdDate.getTime() > 1000) {
+                if (updatedDate.getMonth() === m.monthNum && updatedDate.getFullYear() === m.year) {
+                  m.Diedit += 1;
+                }
+              }
+            });
           });
-          setChartData(Object.entries(locationMap).map(([name, value]) => ({ name, value })));
+
+          if (stockOutRes.data) {
+            stockOutRes.data.forEach(out => {
+              const outDate = new Date(out.tanggal_keluar || out.created_at);
+              months.forEach(m => {
+                if (outDate.getMonth() === m.monthNum && outDate.getFullYear() === m.year) {
+                  m.Keluar += out.jumlah_barang || 1;
+                }
+              });
+            });
+          }
+
+          setChartData(months);
         }
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -83,22 +121,41 @@ export default function DashboardHome() {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="text-lg font-semibold mb-6 flex items-center">
             <TrendingUp className="mr-2 text-blue-600" size={20} />
-            Barang per Lokasi
+            Statistik Bulanan (6 Bulan Terakhir)
           </h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#fff', borderRadius: '8px', border: '1px solid #f3f4f6', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                <XAxis 
+                  dataKey="name" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12, fill: '#6b7280', fontWeight: 500 }} 
+                  dy={10}
                 />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                  {chartData.map((_entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12, fill: '#6b7280' }} 
+                  dx={-10}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#f9fafb' }}
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                    borderRadius: '12px', 
+                    border: 'none', 
+                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+                    padding: '12px 16px',
+                    fontWeight: 500
+                  }}
+                  itemStyle={{ fontWeight: 600 }}
+                />
+                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                <Bar dataKey="Baru" name="Barang Baru" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Keluar" name="Barang Keluar" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Diedit" name="Barang Diedit" fill="#f59e0b" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

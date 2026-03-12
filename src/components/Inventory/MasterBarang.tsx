@@ -20,9 +20,10 @@ function cn(...inputs: ClassValue[]) {
 
 interface MasterBarangProps {
   setActiveTab?: (tab: string) => void;
+  setHistorySearch?: (search: string) => void;
 }
 
-export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
+export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterBarangProps) {
   const { profile } = useAuth();
   const { showToast } = useToast();
   const [items, setItems] = useState<Item[]>([]);
@@ -35,6 +36,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [availableLocations, setAvailableLocations] = useState<any[]>([]);
+  const [locationStats, setLocationStats] = useState<{name: string, count: number, stock: number}[]>([]);
   const [sortColumn, setSortColumn] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
@@ -53,6 +55,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importPreviewData, setImportPreviewData] = useState<any[]>([]);
@@ -104,15 +107,36 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
   async function fetchAvailableLocations() {
     try {
-      const { data, error } = await supabase
-        .from('master_lokasi')
-        .select('*')
-        .order('nama_lokasi');
+      const [locRes, itemsRes] = await Promise.all([
+        supabase.from('master_lokasi').select('*').order('nama_lokasi'),
+        supabase.from('items').select('kode_lokasi, jumlah_barang, master_lokasi(nama_lokasi)')
+      ]);
       
-      if (error) throw error;
+      if (locRes.error) throw locRes.error;
+      if (itemsRes.error) throw itemsRes.error;
       
-      if (data) {
-        setAvailableLocations(data);
+      if (locRes.data) {
+        setAvailableLocations(locRes.data);
+      }
+
+      if (itemsRes.data) {
+        const statsMap: Record<string, { count: number, stock: number }> = {};
+        itemsRes.data.forEach(item => {
+          const locName = (item as any).master_lokasi?.nama_lokasi || item.kode_lokasi || 'Tanpa Lokasi';
+          if (!statsMap[locName]) {
+            statsMap[locName] = { count: 0, stock: 0 };
+          }
+          statsMap[locName].count += 1;
+          statsMap[locName].stock += (item.jumlah_barang || 0);
+        });
+        
+        const statsArray = Object.entries(statsMap).map(([name, stats]) => ({
+          name,
+          count: stats.count,
+          stock: stats.stock
+        })).sort((a, b) => b.count - a.count);
+        
+        setLocationStats(statsArray);
       }
     } catch (err) {
       console.error('Error fetching locations:', err);
@@ -132,7 +156,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
         `, { count: 'exact' });
 
       if (debouncedSearch) {
-        query = query.or(`nama_barang.ilike.%${debouncedSearch}%,kode_barang.ilike.%${debouncedSearch}%`);
+        query = query.or(`nama_barang.ilike.%${debouncedSearch}%,kode_barang.ilike.%${debouncedSearch}%,deskripsi.ilike.%${debouncedSearch}%`);
       }
 
       if (filterLokasi) {
@@ -579,6 +603,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
       // Upload new files
       if (selectedFiles.length > 0) {
+        setUploadingPhoto(true);
         const uploadPromises = selectedFiles.map(async (file) => {
           const fileExt = file.name.split('.').pop();
           const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
@@ -597,6 +622,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
 
         const newUrls = await Promise.all(uploadPromises);
         finalFotoUrls = [...finalFotoUrls, ...newUrls];
+        setUploadingPhoto(false);
       }
 
       const payload = {
@@ -769,13 +795,32 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
         </div>
       )}
 
+      {/* Location Stats */}
+      {locationStats.length > 0 && (
+        <div className="max-h-[160px] overflow-y-auto pr-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 animate-in fade-in duration-500">
+            {locationStats.map((stat, idx) => (
+              <div key={idx} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center space-x-3 hover:border-blue-200 transition-colors cursor-pointer" onClick={() => setFilterLokasi(availableLocations.find(l => l.nama_lokasi === stat.name)?.kode_lokasi || '')}>
+                <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600 shrink-0">
+                  <MapPin size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-sm font-semibold text-gray-900 truncate" title={stat.name}>{stat.name}</h4>
+                  <p className="text-xs text-gray-500 truncate">{stat.count} Jenis • {stat.stock} Total Stok</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
         <div className="md:flex-[2] relative group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="Cari nama atau kode barang..."
+            placeholder="Cari nama, kode, atau deskripsi barang..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
@@ -855,6 +900,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                     )}
                   </div>
                 </th>
+                <th className="px-6 py-4">Deskripsi</th>
                 <th 
                   className="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors group"
                   onClick={() => handleSort('kode_lokasi')}
@@ -887,14 +933,14 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <Loader2 className="animate-spin mx-auto text-blue-600 mb-2" size={32} />
                     <p className="text-gray-500">Memuat data...</p>
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <Package className="mx-auto text-gray-300 mb-2" size={48} />
                     <p className="text-gray-500">Tidak ada barang ditemukan</p>
                   </td>
@@ -943,7 +989,9 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                     <td className="px-6 py-4 font-mono text-xs text-gray-600">{item.kode_barang}</td>
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900">{item.nama_barang}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-[200px]">{item.deskripsi || 'Tidak ada deskripsi'}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-xs text-gray-500 truncate max-w-[200px]">{item.deskripsi || '-'}</div>
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
@@ -960,6 +1008,19 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (setActiveTab && setHistorySearch) {
+                              setHistorySearch(item.kode_barang);
+                              setActiveTab('log-item-change');
+                            }
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Lihat Riwayat"
+                        >
+                          <History size={18} />
+                        </button>
                         {profile?.role === 'admin' ? (
                           <>
                             <button
@@ -993,9 +1054,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                               <Edit2 size={18} />
                             </button>
                           </>
-                        ) : (
-                          <span className="text-[10px] text-gray-400 font-medium italic">View Only</span>
-                        )}
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -1225,7 +1284,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                   className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-all shadow-sm font-medium disabled:opacity-50"
                 >
                   {formLoading ? <Loader2 className="animate-spin" size={18} /> : null}
-                  <span>{editingItem ? 'Simpan Perubahan' : 'Tambah Barang'}</span>
+                  <span>{formLoading ? (uploadingPhoto ? 'Mengunggah Foto...' : 'Menyimpan...') : (editingItem ? 'Simpan Perubahan' : 'Tambah Barang')}</span>
                 </button>
               </div>
             </form>
@@ -1316,6 +1375,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                   <tr className="border-b border-gray-100 text-gray-500 font-semibold">
                     <th className="pb-3">Kode</th>
                     <th className="pb-3">Nama Barang</th>
+                    <th className="pb-3">Deskripsi</th>
                     <th className="pb-3">Jumlah</th>
                     <th className="pb-3">Lokasi</th>
                   </tr>
@@ -1325,6 +1385,7 @@ export default function MasterBarang({ setActiveTab }: MasterBarangProps) {
                     <tr key={idx}>
                       <td className="py-3 font-mono text-xs">{row.kode_barang}</td>
                       <td className="py-3 font-medium">{row.nama_barang}</td>
+                      <td className="py-3 text-xs text-gray-500 max-w-[200px] truncate" title={row.deskripsi}>{row.deskripsi || '-'}</td>
                       <td className="py-3">{row.jumlah_barang}</td>
                       <td className="py-3">{row.nama_lokasi}</td>
                     </tr>

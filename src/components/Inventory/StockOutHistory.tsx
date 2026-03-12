@@ -66,7 +66,7 @@ export default function StockOutHistory() {
 
       if (search) {
         // Search in the history table's own columns for reliability
-        query = query.or(`nama_barang.ilike.%${search}%,kode_barang.ilike.%${search}%,nama_lokasi.ilike.%${search}%,user_name.ilike.%${search}%`);
+        query = query.or(`nama_barang.ilike.%${search}%,kode_barang.ilike.%${search}%,nama_lokasi.ilike.%${search}%,user_name.ilike.%${search}%,deskripsi.ilike.%${search}%`);
       }
 
       if (startDate) {
@@ -152,7 +152,7 @@ export default function StockOutHistory() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="Cari nama, kode, atau lokasi..."
+            placeholder="Cari nama, kode, lokasi, atau deskripsi..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"

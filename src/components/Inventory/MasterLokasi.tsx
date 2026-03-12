@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { 
-  Plus, Search, Edit2, Trash2, X, Loader2, MapPin, Hash, ChevronLeft, ChevronRight
+  Plus, Search, Edit2, Trash2, X, Loader2, MapPin, Hash, ChevronLeft, ChevronRight, History
 } from 'lucide-react';
 import { Location } from '../../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -13,7 +13,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export default function MasterLokasi() {
+interface MasterLokasiProps {
+  setActiveTab?: (tab: string) => void;
+  setHistorySearch?: (search: string) => void;
+}
+
+export default function MasterLokasi({ setActiveTab, setHistorySearch }: MasterLokasiProps) {
   const { profile } = useAuth();
   const { showToast } = useToast();
   const [locations, setLocations] = useState<Location[]>([]);
@@ -207,6 +212,19 @@ export default function MasterLokasi() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (setActiveTab && setHistorySearch) {
+                              setHistorySearch(loc.nama_lokasi);
+                              setActiveTab('take-item-history');
+                            }
+                          }}
+                          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Lihat Riwayat"
+                        >
+                          <History size={18} />
+                        </button>
                         <button
                           onClick={() => handleOpenModal(loc)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
