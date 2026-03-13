@@ -38,7 +38,7 @@ export default function DashboardHome() {
           // Recent items
           const sorted = [...itemsRes.data].sort((a, b) => 
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          ).slice(0, 5);
+          ).slice(0, 20);
           setRecentItems(sorted);
 
           // Chart data: Monthly stats (last 6 months)
@@ -162,25 +162,30 @@ export default function DashboardHome() {
         </div>
 
         {/* Recent Items */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h3 className="text-lg font-semibold mb-6 flex items-center">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col h-[420px]">
+          <h3 className="text-lg font-semibold mb-6 flex items-center shrink-0">
             <Clock className="mr-2 text-blue-600" size={20} />
             Barang Terbaru
           </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
+          <div className="overflow-y-auto flex-1 pr-2">
+            <table className="w-full text-left relative">
+              <thead className="sticky top-0 bg-white z-10">
                 <tr className="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                  <th className="pb-3">Barang</th>
-                  <th className="pb-3">Kode</th>
-                  <th className="pb-3">Lokasi</th>
-                  <th className="pb-3 text-right">Stok</th>
+                  <th className="pb-3 bg-white">Barang</th>
+                  <th className="pb-3 bg-white">Kode</th>
+                  <th className="pb-3 bg-white">Lokasi</th>
+                  <th className="pb-3 bg-white text-right">Stok</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {recentItems.map((item) => (
-                  <tr key={item.id} className="text-sm hover:bg-gray-50 transition-colors">
-                    <td className="py-4 font-medium text-gray-900">{item.nama_barang}</td>
+                {recentItems.map((item, index) => (
+                  <tr key={item.id} className={`text-sm hover:bg-gray-50 transition-colors ${index < 5 ? 'bg-blue-50/30' : ''}`}>
+                    <td className="py-4 font-medium text-gray-900">
+                      <div className="flex items-center space-x-2">
+                        {index < 5 && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" title="Top 5 Terbaru"></span>}
+                        <span className={index < 5 ? 'text-blue-700' : ''}>{item.nama_barang}</span>
+                      </div>
+                    </td>
                     <td className="py-4 text-gray-500">{item.kode_barang}</td>
                     <td className="py-4 text-gray-500">{(item as any).master_lokasi?.nama_lokasi || item.kode_lokasi || '-'}</td>
                     <td className="py-4 text-right font-semibold text-blue-600">{item.jumlah_barang}</td>
