@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Search, Edit2, Trash2, X, Loader2, MapPin, Hash, ChevronLeft, ChevronRight, History
 } from 'lucide-react';
@@ -14,11 +15,11 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface MasterLokasiProps {
-  setActiveTab?: (tab: string) => void;
   setHistorySearch?: (search: string) => void;
 }
 
-export default function MasterLokasi({ setActiveTab, setHistorySearch }: MasterLokasiProps) {
+export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const { showToast } = useToast();
   const [locations, setLocations] = useState<Location[]>([]);
@@ -215,9 +216,9 @@ export default function MasterLokasi({ setActiveTab, setHistorySearch }: MasterL
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (setActiveTab && setHistorySearch) {
+                            if (setHistorySearch) {
                               setHistorySearch(loc.nama_lokasi);
-                              setActiveTab('take-item-history');
+                              navigate('/take-item-history');
                             }
                           }}
                           className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"

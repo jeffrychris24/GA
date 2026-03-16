@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { useSettings } from '../../hooks/useSettings';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, Package, MapPin, LogOut, Menu, X, 
   Bell, User as UserIcon, ChevronRight, History, ClipboardList, Archive,
@@ -16,14 +17,15 @@ function cn(...inputs: ClassValue[]) {
 
 interface LayoutProps {
   children: React.ReactNode;
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
+  setHistorySearch?: (search: string) => void;
 }
 
-export default function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
+export default function Layout({ children, setHistorySearch }: LayoutProps) {
   const { profile } = useAuth();
   const { settings } = useSettings();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
+  const currentPath = location.pathname.replace('/', '') || 'dashboard';
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -68,24 +70,28 @@ export default function Layout({ children, activeTab, setActiveTab }: LayoutProp
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setIsSidebarOpen(false);
-                }}
-                className={cn(
-                  "w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200",
-                  activeTab === item.id 
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-                    : "text-gray-400 hover:bg-white/5 hover:text-white"
-                )}
-              >
-                {item.icon}
-                <span className="font-medium">{item.label}</span>
-              </button>
-            ))}
+            {menuItems.map((item) => {
+              const isActive = currentPath === item.id;
+              return (
+                <Link
+                  key={item.id}
+                  to={`/${item.id}`}
+                  onClick={() => {
+                    setIsSidebarOpen(false);
+                    if (setHistorySearch) setHistorySearch('');
+                  }}
+                  className={cn(
+                    "w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200",
+                    isActive 
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
+                      : "text-gray-400 hover:bg-white/5 hover:text-white"
+                  )}
+                >
+                  {item.icon}
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Sidebar Footer */}
@@ -117,7 +123,7 @@ export default function Layout({ children, activeTab, setActiveTab }: LayoutProp
             <nav className="hidden sm:flex items-center space-x-2 text-sm text-gray-500">
               <span>App</span>
               <ChevronRight size={16} />
-              <span className="font-medium text-gray-900 capitalize">{activeTab.replace('-', ' ')}</span>
+              <span className="font-medium text-gray-900 capitalize">{currentPath.replace('-', ' ')}</span>
             </nav>
           </div>
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Login from './components/Auth/Login';
 import Layout from './components/Dashboard/Layout';
@@ -15,7 +16,6 @@ import { ToastProvider } from './components/UI/Toast';
 
 export default function App() {
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [historySearch, setHistorySearch] = useState('');
 
   if (loading) {
@@ -32,20 +32,23 @@ export default function App() {
   return (
     <ToastProvider>
       {!user ? (
-        <Login />
+        <Routes>
+          <Route path="*" element={<Login />} />
+        </Routes>
       ) : (
-        <Layout activeTab={activeTab} setActiveTab={(tab) => {
-          setActiveTab(tab);
-          setHistorySearch('');
-        }}>
-          {activeTab === 'dashboard' && <DashboardHome />}
-          {activeTab === 'barang' && <MasterBarang setActiveTab={setActiveTab} setHistorySearch={setHistorySearch} />}
-          {activeTab === 'lokasi' && <MasterLokasi setActiveTab={setActiveTab} setHistorySearch={setHistorySearch} />}
-          {activeTab === 'take-item-history' && <TakeItemHistory initialSearch={historySearch} />}
-          {activeTab === 'log-item-change' && <LogItemChange initialSearch={historySearch} />}
-          {activeTab === 'stock-out-history' && <StockOutHistory />}
-          {activeTab === 'login-settings' && <LoginSettings />}
-          {activeTab === 'manage-users' && <ManageUsers />}
+        <Layout setHistorySearch={setHistorySearch}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardHome />} />
+            <Route path="/barang" element={<MasterBarang setHistorySearch={setHistorySearch} />} />
+            <Route path="/lokasi" element={<MasterLokasi setHistorySearch={setHistorySearch} />} />
+            <Route path="/take-item-history" element={<TakeItemHistory initialSearch={historySearch} />} />
+            <Route path="/log-item-change" element={<LogItemChange initialSearch={historySearch} />} />
+            <Route path="/stock-out-history" element={<StockOutHistory />} />
+            <Route path="/login-settings" element={<LoginSettings />} />
+            <Route path="/manage-users" element={<ManageUsers />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </Layout>
       )}
     </ToastProvider>

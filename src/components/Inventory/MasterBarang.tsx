@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, Search, Filter, Edit2, ChevronLeft, ChevronRight, 
   Package, Image as ImageIcon, Upload, Download, X, Loader2, AlertCircle,
@@ -19,11 +20,11 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface MasterBarangProps {
-  setActiveTab?: (tab: string) => void;
   setHistorySearch?: (search: string) => void;
 }
 
-export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterBarangProps) {
+export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
+  const navigate = useNavigate();
   const { profile } = useAuth();
   const { showToast } = useToast();
   const [items, setItems] = useState<Item[]>([]);
@@ -310,11 +311,7 @@ export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterB
       showToast('Barang berhasil dipindahkan ke riwayat keluar', 'success');
       setIsStockOutModalOpen(false);
       setSelectedItemForStockOut(null);
-      if (setActiveTab) {
-        setActiveTab('stock-out-history');
-      } else {
-        fetchItems();
-      }
+      navigate('/stock-out-history');
     } catch (err: any) {
       showToast(err.message || 'Gagal mengeluarkan barang', 'error');
     } finally {
@@ -707,11 +704,7 @@ export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterB
       showToast(`${selectedItems.length} barang berhasil dipindahkan ke riwayat keluar`, 'success');
       setIsBulkStockOutModalOpen(false);
       setSelectedItems([]);
-      if (setActiveTab) {
-        setActiveTab('stock-out-history');
-      } else {
-        fetchItems();
-      }
+      navigate('/stock-out-history');
     } catch (err: any) {
       showToast(err.message || 'Gagal mengeluarkan barang secara massal', 'error');
     } finally {
@@ -1023,9 +1016,9 @@ export default function MasterBarang({ setActiveTab, setHistorySearch }: MasterB
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (setActiveTab && setHistorySearch) {
+                            if (setHistorySearch) {
                               setHistorySearch(item.kode_barang);
-                              setActiveTab('log-item-change');
+                              navigate('/log-item-change');
                             }
                           }}
                           className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
