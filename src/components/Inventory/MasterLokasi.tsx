@@ -96,6 +96,12 @@ export default function MasterLokasi({ setHistorySearch }: MasterLokasiProps) {
 
     try {
       if (editingLocation) {
+        if (formData.nama_lokasi === editingLocation.nama_lokasi) {
+          setIsModalOpen(false);
+          setFormLoading(false);
+          return;
+        }
+
         const { error } = await supabase
           .from('master_lokasi')
           .update({ nama_lokasi: formData.nama_lokasi })

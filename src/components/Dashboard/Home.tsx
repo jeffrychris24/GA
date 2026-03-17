@@ -18,11 +18,17 @@ export default function DashboardHome() {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        const [itemsRes, profilesRes, locationsRes, stockOutRes] = await Promise.all([
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+        sixMonthsAgo.setDate(1);
+        sixMonthsAgo.setHours(0, 0, 0, 0);
+
+        const [itemsRes, profilesRes, locationsRes, stockOutRes, auditLogsRes] = await Promise.all([
           supabase.from('items').select('*, master_lokasi(nama_lokasi)'),
           supabase.from('profiles').select('*', { count: 'exact', head: true }),
           supabase.from('master_lokasi').select('*', { count: 'exact', head: true }),
-          supabase.from('stock_keluar_history').select('tanggal_keluar, created_at, jumlah_barang')
+          supabase.from('stock_keluar_history').select('tanggal_keluar, created_at, jumlah_barang').or(`tanggal_keluar.gte.${sixMonthsAgo.toISOString()},created_at.gte.${sixMonthsAgo.toISOString()}`),
+          supabase.from('item_audit_logs').select('action, created_at, new_values').gte('created_at', sixMonthsAgo.toISOString())
         ]);
 
         if (itemsRes.data) {
@@ -58,27 +64,38 @@ export default function DashboardHome() {
 
           itemsRes.data.forEach(item => {
             const createdDate = new Date(item.created_at);
-            const updatedDate = item.updated_at ? new Date(item.updated_at) : null;
-            
             months.forEach(m => {
               if (createdDate.getMonth() === m.monthNum && createdDate.getFullYear() === m.year) {
                 m.Baru += 1;
               }
-              // If updated_at exists and is different from created_at (by at least 1 second)
-              if (updatedDate && updatedDate.getTime() - createdDate.getTime() > 1000) {
-                if (updatedDate.getMonth() === m.monthNum && updatedDate.getFullYear() === m.year) {
-                  m.Diedit += 1;
-                }
-              }
             });
           });
+
+          if (auditLogsRes.data) {
+            auditLogsRes.data.forEach(log => {
+              const logDate = new Date(log.created_at);
+              months.forEach(m => {
+                if (logDate.getMonth() === m.monthNum && logDate.getFullYear() === m.year) {
+                  if (log.action === 'UPDATE') {
+                    m.Diedit += 1;
+                  }
+                }
+              });
+            });
+          }
 
           if (stockOutRes.data) {
             stockOutRes.data.forEach(out => {
               const outDate = new Date(out.tanggal_keluar || out.created_at);
+              const createdDate = new Date(out.created_at);
               months.forEach(m => {
+                // Count as Keluar based on outDate
                 if (outDate.getMonth() === m.monthNum && outDate.getFullYear() === m.year) {
-                  m.Keluar += out.jumlah_barang || 1;
+                  m.Keluar += 1;
+                }
+                // Also count as Baru based on original createdDate, because it was deleted from items
+                if (createdDate.getMonth() === m.monthNum && createdDate.getFullYear() === m.year) {
+                  m.Baru += 1;
                 }
               });
             });
@@ -110,7 +127,7 @@ export default function DashboardHome() {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Barang" value={stats.totalItems} icon={<Package className="text-blue-600" />} color="bg-blue-50" />
+        <StatCard title="Total Items" value={stats.totalItems} icon={<Package className="text-blue-600" />} color="bg-blue-50" />
         <StatCard title="Total Lokasi" value={stats.totalLocations} icon={<MapPin className="text-emerald-600" />} color="bg-emerald-50" />
         <StatCard title="Total User" value={stats.totalUsers} icon={<Users className="text-amber-600" />} color="bg-amber-50" />
         <StatCard title="Total Stok" value={stats.totalStock} icon={<TrendingUp className="text-rose-600" />} color="bg-rose-50" />
@@ -153,9 +170,9 @@ export default function DashboardHome() {
                   itemStyle={{ fontWeight: 600 }}
                 />
                 <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                <Bar dataKey="Baru" name="Barang Baru" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Keluar" name="Barang Keluar" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Diedit" name="Barang Diedit" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Baru" name="Item Baru" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Keluar" name="Item Keluar" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Diedit" name="Item Diedit" fill="#f59e0b" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

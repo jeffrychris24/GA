@@ -629,6 +629,21 @@ export default function MasterBarang({ setHistorySearch }: MasterBarangProps) {
       };
 
       if (editingItem) {
+        const isChanged = 
+          formData.kode_barang !== editingItem.kode_barang ||
+          formData.nama_barang !== editingItem.nama_barang ||
+          formData.jumlah_barang !== editingItem.jumlah_barang ||
+          formData.kode_lokasi !== (editingItem.kode_lokasi || '') ||
+          formData.deskripsi !== (editingItem.deskripsi || '') ||
+          selectedFiles.length > 0 ||
+          JSON.stringify(formData.foto_urls) !== JSON.stringify(editingItem.foto_urls || []);
+
+        if (!isChanged) {
+          setIsModalOpen(false);
+          setFormLoading(false);
+          return;
+        }
+
         const { error } = await supabase
           .from('items')
           .update(payload)

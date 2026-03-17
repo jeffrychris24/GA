@@ -44,7 +44,7 @@ export default function App() {
             <Route path="/lokasi" element={<MasterLokasi setHistorySearch={setHistorySearch} />} />
             <Route path="/take-item-history" element={<TakeItemHistory initialSearch={historySearch} />} />
             <Route path="/log-item-change" element={<LogItemChange initialSearch={historySearch} />} />
-            <Route path="/stock-out-history" element={<StockOutHistory />} />
+            <Route path="/stock-out-history" element={<StockOutHistory setHistorySearch={setHistorySearch} />} />
             <Route path="/login-settings" element={<LoginSettings />} />
             <Route path="/manage-users" element={<ManageUsers />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

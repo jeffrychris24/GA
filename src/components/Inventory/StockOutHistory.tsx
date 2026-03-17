@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { 
   Search, Filter, Calendar, Package, MapPin, 
-  ChevronLeft, ChevronRight, Loader2, Info, X, ArrowUpDown, ChevronUp, ChevronDown, Download
+  ChevronLeft, ChevronRight, Loader2, Info, X, ArrowUpDown, ChevronUp, ChevronDown, Download, RotateCcw, AlertCircle, History
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../UI/Toast';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -33,8 +35,14 @@ interface StockOutEntry {
   } | null;
 }
 
-export default function StockOutHistory() {
+interface StockOutHistoryProps {
+  setHistorySearch?: (search: string) => void;
+}
+
+export default function StockOutHistory({ setHistorySearch }: StockOutHistoryProps) {
+  const navigate = useNavigate();
   const { profile } = useAuth();
+  const { showToast } = useToast();
   const [history, setHistory] = useState<StockOutEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -48,6 +56,9 @@ export default function StockOutHistory() {
 
   const [selectedEntry, setSelectedEntry] = useState<StockOutEntry | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
+  const [entryToRestore, setEntryToRestore] = useState<StockOutEntry | null>(null);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   // Export state
   const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
@@ -123,6 +134,111 @@ export default function StockOutHistory() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Stock Out History");
     XLSX.writeFile(workbook, `Stock_Out_History_${new Date().toISOString().split('T')[0]}.xlsx`);
     setIsExportPreviewOpen(false);
+  };
+
+  const handleRestore = async () => {
+    if (!entryToRestore) return;
+    setIsRestoring(true);
+
+    try {
+      // 1. Insert back to items table (use upsert to handle halfway failures)
+      const { data: insertedItem, error: insertError } = await supabase
+        .from('items')
+        .upsert([{
+          id: entryToRestore.original_item_id, // Keep the original ID if possible
+          kode_barang: entryToRestore.kode_barang,
+          nama_barang: entryToRestore.nama_barang,
+          jumlah_barang: entryToRestore.jumlah_barang,
+          kode_lokasi: entryToRestore.kode_lokasi,
+          foto_urls: entryToRestore.foto_urls,
+          deskripsi: entryToRestore.deskripsi,
+          created_at: entryToRestore.created_at,
+          updated_at: new Date().toISOString()
+        }], { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (insertError) {
+        if (insertError.code === '23505') { // unique_violation on kode_barang
+          throw new Error('Kode barang ini sudah digunakan oleh barang lain di Master Barang. Silakan cek kembali.');
+        }
+        throw insertError;
+      }
+
+      // 2. Update the audit log created by the trigger
+      // Fetch the latest INSERT log for this item
+      const { data: latestLog, error: logFetchError } = await supabase
+        .from('item_audit_logs')
+        .select('id, new_values')
+        .eq('item_id', insertedItem.id)
+        .eq('action', 'INSERT')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (logFetchError) {
+        console.error('Error fetching latest log:', logFetchError);
+      }
+
+      if (latestLog) {
+        // Update the action to 'DIKEMBALIKAN KE STOCK' and add a note
+        const { error: updateLogError } = await supabase
+          .from('item_audit_logs')
+          .update({
+            action: 'DIKEMBALIKAN KE STOCK',
+            new_values: {
+              ...(latestLog.new_values as object || {}),
+              keterangan_restore: `Dikembalikan dari riwayat keluar. Alasan keluar sebelumnya: ${entryToRestore.keterangan_alasan}`
+            }
+          })
+          .eq('id', latestLog.id);
+          
+        if (updateLogError) {
+          console.error('Error updating log:', updateLogError);
+        }
+      } else {
+        // If trigger didn't create a log, manually insert one
+        const { error: insertLogError } = await supabase
+          .from('item_audit_logs')
+          .insert([{
+            item_id: insertedItem.id,
+            action: 'DIKEMBALIKAN KE STOCK',
+            new_values: {
+              kode_barang: entryToRestore.kode_barang,
+              nama_barang: entryToRestore.nama_barang,
+              jumlah_barang: entryToRestore.jumlah_barang,
+              keterangan_restore: `Dikembalikan dari riwayat keluar. Alasan keluar sebelumnya: ${entryToRestore.keterangan_alasan}`
+            },
+            changed_by: profile?.id
+          }]);
+          
+        if (insertLogError) {
+          console.error('Error inserting manual log:', insertLogError);
+        }
+      }
+
+      // 3. Delete from stock_keluar_history
+      const { error: deleteError, count } = await supabase
+        .from('stock_keluar_history')
+        .delete({ count: 'exact' })
+        .eq('id', entryToRestore.id);
+
+      if (deleteError) throw deleteError;
+      
+      if (count === 0) {
+        console.warn('Peringatan: Data tidak terhapus dari stock_keluar_history. Kemungkinan karena RLS (Row Level Security).');
+      }
+
+      showToast('Barang berhasil dikembalikan ke stock', 'success');
+      setIsRestoreModalOpen(false);
+      setEntryToRestore(null);
+      fetchHistory(); // Refresh the list
+    } catch (err: any) {
+      console.error('Error restoring item:', err);
+      showToast(err.message || 'Gagal mengembalikan barang', 'error');
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
@@ -261,15 +377,45 @@ export default function StockOutHistory() {
                       <div className="text-xs text-gray-500 truncate max-w-[150px]">{entry.keterangan_alasan}</div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => {
-                          setSelectedEntry(entry);
-                          setIsDetailModalOpen(true);
-                        }}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Info size={18} />
-                      </button>
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (setHistorySearch) {
+                              setHistorySearch(entry.kode_barang);
+                              navigate('/log-item-change');
+                            }
+                          }}
+                          className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          title="Lihat Riwayat"
+                        >
+                          <History size={18} />
+                        </button>
+                        {profile?.role === 'admin' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEntryToRestore(entry);
+                              setIsRestoreModalOpen(true);
+                            }}
+                            className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                            title="Kembalikan ke Stock"
+                          >
+                            <RotateCcw size={18} />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEntry(entry);
+                            setIsDetailModalOpen(true);
+                          }}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Detail"
+                        >
+                          <Info size={18} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -506,6 +652,68 @@ export default function StockOutHistory() {
                 <Download size={18} />
                 <span>Konfirmasi Download</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restore Confirmation Modal */}
+      {isRestoreModalOpen && entryToRestore && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-4 mx-auto">
+                <RotateCcw className="text-emerald-600" size={24} />
+              </div>
+              
+              <h3 className="text-xl font-bold text-center text-gray-900 mb-2">
+                Kembalikan ke Stock?
+              </h3>
+              
+              <p className="text-center text-gray-500 mb-6">
+                Anda akan mengembalikan <span className="font-semibold text-gray-900">{entryToRestore.nama_barang}</span> sebanyak <span className="font-semibold text-gray-900">{entryToRestore.jumlah_barang}</span> ke Master Barang.
+              </p>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
+                <AlertCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+                <div className="text-sm text-amber-800">
+                  <p className="font-semibold mb-1">Penting:</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li>Barang akan dihapus dari riwayat ini.</li>
+                    <li>Akan tercatat di Log Item Change sebagai "Barang dikembali ke stock".</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setIsRestoreModalOpen(false);
+                    setEntryToRestore(null);
+                  }}
+                  disabled={isRestoring}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-medium transition-colors disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handleRestore}
+                  disabled={isRestoring}
+                  className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-medium transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  {isRestoring ? (
+                    <>
+                      <Loader2 className="animate-spin" size={18} />
+                      <span>Memproses...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw size={18} />
+                      <span>Ya, Kembalikan</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

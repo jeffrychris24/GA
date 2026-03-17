@@ -62,6 +62,33 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
   const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
   const [exportData, setExportData] = useState<any[]>([]);
 
+  // Lightbox state
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const openLightbox = (images: string[], index: number) => {
+    setLightboxImages(images);
+    setCurrentImageIndex(index);
+    setIsLightboxOpen(true);
+  };
+
+  const closeLightbox = () => {
+    setIsLightboxOpen(false);
+    setLightboxImages([]);
+    setCurrentImageIndex(0);
+  };
+
+  const nextImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === lightboxImages.length - 1 ? 0 : prev + 1));
+  };
+
+  const prevImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((prev) => (prev === 0 ? lightboxImages.length - 1 : prev - 1));
+  };
+
   const [locations, setLocations] = useState<Record<string, string>>({});
 
   const fetchLocations = async () => {
@@ -177,8 +204,8 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
       return {
         'Tanggal': new Date(entry.created_at).toLocaleString('id-ID'),
         'Aksi': entry.action,
-        'Nama Barang': entry.items?.nama_barang || entry.old_values?.nama_barang || 'Item Deleted',
-        'Kode Barang': entry.items?.kode_barang || entry.old_values?.kode_barang || entry.item_id,
+        'Nama Barang': entry.items?.nama_barang || entry.new_values?.nama_barang || entry.old_values?.nama_barang || 'Item Deleted',
+        'Kode Barang': entry.items?.kode_barang || entry.new_values?.kode_barang || entry.old_values?.kode_barang || entry.item_id,
         'Perubahan': changes.join(' | '),
         'Diubah Oleh': entry.profiles?.full_name || 'Unknown User'
       };
@@ -208,7 +235,8 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
       'jumlah_barang': 'Jumlah Barang',
       'kode_lokasi': 'Lokasi',
       'deskripsi': 'Deskripsi',
-      'foto_urls': 'Foto'
+      'foto_urls': 'Foto',
+      'keterangan_restore': 'Keterangan Restore'
     };
 
     const formatValue = (key: string, value: any) => {
@@ -222,8 +250,12 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                 key={index} 
                 src={url} 
                 alt={`Foto ${index + 1}`} 
-                className="w-10 h-10 object-cover rounded border border-gray-200 shadow-sm" 
+                className="w-10 h-10 object-cover rounded border border-gray-200 shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all" 
                 referrerPolicy="no-referrer" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openLightbox(value, index);
+                }}
               />
             ))}
           </div>
@@ -453,16 +485,18 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={cn(
                       "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
-                      entry.action === 'UPDATE' ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'
+                      entry.action === 'UPDATE' ? 'bg-blue-100 text-blue-800' : 
+                      entry.action === 'DIKEMBALIKAN KE STOCK' ? 'bg-emerald-100 text-emerald-800' :
+                      'bg-red-100 text-red-800'
                     )}>
                       {entry.action}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {entry.items?.nama_barang || entry.old_values?.nama_barang || 'Item Deleted'}
+                    {entry.items?.nama_barang || entry.new_values?.nama_barang || entry.old_values?.nama_barang || 'Item Deleted'}
                   </td>
                   <td className="px-6 py-4 text-sm font-mono text-gray-700 max-w-[150px] truncate">
-                    {entry.items?.kode_barang || entry.old_values?.kode_barang || entry.item_id}
+                    {entry.items?.kode_barang || entry.new_values?.kode_barang || entry.old_values?.kode_barang || entry.item_id}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
                     <span className="text-blue-600 hover:underline">
@@ -582,7 +616,7 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Kode Barang</p>
-                    <p className="text-sm font-mono font-medium text-gray-900">{selectedLogEntryForDetail.items?.kode_barang || selectedLogEntryForDetail.item_id}</p>
+                    <p className="text-sm font-mono font-medium text-gray-900">{selectedLogEntryForDetail.items?.kode_barang || selectedLogEntryForDetail.new_values?.kode_barang || selectedLogEntryForDetail.old_values?.kode_barang || selectedLogEntryForDetail.item_id}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -667,6 +701,57 @@ export default function LogItemChange({ initialSearch = '' }: LogItemChangeProps
                 <span>Konfirmasi Download</span>
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal */}
+      {isLightboxOpen && lightboxImages.length > 0 && (
+        <div 
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={closeLightbox}
+        >
+          <button 
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all"
+          >
+            <X size={24} />
+          </button>
+
+          <div 
+            className="relative w-full max-w-5xl max-h-[90vh] flex items-center justify-center p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {lightboxImages.length > 1 && (
+              <button 
+                onClick={prevImage}
+                className="absolute left-4 p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-10"
+              >
+                <ChevronLeft size={32} />
+              </button>
+            )}
+
+            <img 
+              src={lightboxImages[currentImageIndex]} 
+              alt={`Foto ${currentImageIndex + 1}`} 
+              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              referrerPolicy="no-referrer"
+            />
+
+            {lightboxImages.length > 1 && (
+              <button 
+                onClick={nextImage}
+                className="absolute right-4 p-3 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full transition-all z-10"
+              >
+                <ChevronRight size={32} />
+              </button>
+            )}
+
+            {lightboxImages.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/50 rounded-full text-white text-sm font-medium backdrop-blur-md">
+                {currentImageIndex + 1} / {lightboxImages.length}
+              </div>
+            )}
           </div>
         </div>
       )}
